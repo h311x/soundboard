@@ -4,7 +4,7 @@ export default {
 	app: {
 		name: "Soundboard",
 		identifier: "com.h311x.soundboard",
-		version: "0.1.3",
+		version: "0.1.4",
 	},
 	runtime: {
 		exitOnLastWindowClosed: true,
@@ -22,6 +22,7 @@ export default {
 			bundleCEF: false,
 			codesign: false,
 			notarize: false,
+			icons: "icon.iconset",
 		},
 		linux: {
 			bundleCEF: true,
@@ -29,6 +30,7 @@ export default {
 		},
 		win: {
 			bundleCEF: false,
+			icon: "assets/icon/icon.ico",
 		},
 	},
 	release: {

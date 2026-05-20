@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 768 768" fill="none" color-interpolation="sRGB">
+  <defs>
+    <linearGradient id="bg" x1="96" y1="0" x2="672" y2="768" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#181b21"/>
+      <stop offset="22%" stop-color="#13161b"/>
+      <stop offset="48%" stop-color="#0f1115"/>
+      <stop offset="72%" stop-color="#0c0d10"/>
+      <stop offset="100%" stop-color="#08080a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="30%" cy="8%" r="68%" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="#8d9aa8" stop-opacity="0.26"/>
+      <stop offset="28%" stop-color="#7a8796" stop-opacity="0.14"/>
+      <stop offset="55%" stop-color="#6a7684" stop-opacity="0.06"/>
+      <stop offset="78%" stop-color="#5c6775" stop-opacity="0.02"/>
+      <stop offset="100%" stop-color="#5c6775" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="glass" x1="148" y1="132" x2="620" y2="636" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.13"/>
+      <stop offset="18%" stop-color="#ffffff" stop-opacity="0.1"/>
+      <stop offset="36%" stop-color="#eef1f5" stop-opacity="0.06"/>
+      <stop offset="54%" stop-color="#c8ced6" stop-opacity="0.035"/>
+      <stop offset="72%" stop-color="#8a919a" stop-opacity="0.02"/>
+      <stop offset="88%" stop-color="#3a3f46" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#121418" stop-opacity="0.42"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="20%" stop-color="#ffffff" stop-opacity="0.1"/>
+      <stop offset="45%" stop-color="#ffffff" stop-opacity="0.04"/>
+      <stop offset="70%" stop-color="#ffffff" stop-opacity="0.01"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#727c88"/>
+      <stop offset="12%" stop-color="#7f8996"/>
+      <stop offset="28%" stop-color="#939eac"/>
+      <stop offset="44%" stop-color="#a8b2c0"/>
+      <stop offset="60%" stop-color="#bec6d2"/>
+      <stop offset="76%" stop-color="#d4dae3"/>
+      <stop offset="90%" stop-color="#e6eaef"/>
+      <stop offset="100%" stop-color="#f3f5f8"/>
+    </linearGradient>
+    <linearGradient id="barHi" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#848e9a"/>
+      <stop offset="15%" stop-color="#9aa4b2"/>
+      <stop offset="32%" stop-color="#b0b9c6"/>
+      <stop offset="50%" stop-color="#c8d0db"/>
+      <stop offset="68%" stop-color="#dde3eb"/>
+      <stop offset="84%" stop-color="#eef1f6"/>
+      <stop offset="100%" stop-color="#ffffff"/>
+    </linearGradient>
+    <filter id="shadow" x="-8%" y="-6%" width="116%" height="118%" filterUnits="objectBoundingBox" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000000" flood-opacity="0.55"/>
+    </filter>
+    <filter id="barGlow" x="-50%" y="-15%" width="200%" height="130%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="filmGrain" x="0" y="0" width="100%" height="100%" filterUnits="objectBoundingBox" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="4" seed="8" result="noise"/>
+      <feColorMatrix in="noise" type="saturate" values="0" result="mono"/>
+      <feComponentTransfer in="mono" result="grain">
+        <feFuncA type="linear" slope="0.028" intercept="0"/>
+      </feComponentTransfer>
+      <feBlend in="SourceGraphic" in2="grain" mode="soft-light"/>
+    </filter>
+    <clipPath id="icon">
+      <rect width="768" height="768" rx="172"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#icon)" filter="url(#filmGrain)">
+    <rect width="768" height="768" fill="url(#bg)"/>
+    <rect width="768" height="768" fill="url(#glow)"/>
+
+    <g filter="url(#shadow)">
+      <rect x="124" y="124" width="520" height="520" rx="72" fill="#0c0d10"/>
+      <rect x="124" y="124" width="520" height="520" rx="72" fill="url(#glass)"/>
+      <rect x="124" y="124" width="520" height="520" rx="72" fill="url(#shine)"/>
+      <rect
+        x="125"
+        y="125"
+        width="518"
+        height="518"
+        rx="71"
+        stroke="#b8c0cc"
+        stroke-opacity="0.22"
+        stroke-width="1.5"
+      />
+
+      <g transform="translate(384 390)">
+        <rect x="-132" y="-56" width="40" height="112" rx="20" fill="url(#bar)"/>
+        <rect x="-76" y="-100" width="40" height="200" rx="20" fill="url(#barHi)" filter="url(#barGlow)"/>
+        <rect x="-20" y="-72" width="40" height="144" rx="20" fill="url(#bar)"/>
+        <rect x="36" y="-116" width="40" height="232" rx="20" fill="url(#bar)"/>
+        <rect x="92" y="-48" width="40" height="96" rx="20" fill="url(#bar)"/>
+      </g>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Soundboard icon preview</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: system-ui, sans-serif;
+        color: #e8e8ec;
+        background: #111114;
+      }
+      main {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 32px 24px 48px;
+      }
+      h1 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 0 0 8px;
+      }
+      p {
+        margin: 0 0 24px;
+        color: #888;
+        font-size: 0.9rem;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 20px;
+      }
+      .panel {
+        border-radius: 14px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+      }
+      .panel span {
+        font-size: 0.75rem;
+        color: #777;
+      }
+      .checker {
+        background-color: #1a1a1e;
+        background-image:
+          linear-gradient(45deg, #25252a 25%, transparent 25%),
+          linear-gradient(-45deg, #25252a 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, #25252a 75%),
+          linear-gradient(-45deg, transparent 75%, #25252a 75%);
+        background-size: 20px 20px;
+        background-position:
+          0 0,
+          0 10px,
+          10px -10px,
+          -10px 0;
+      }
+      .dark {
+        background: #08080a;
+      }
+      .light {
+        background: #e8e8ed;
+      }
+      .panel img {
+        width: 160px;
+        height: 160px;
+        image-rendering: auto;
+      }
+      .sizes {
+        display: flex;
+        gap: 16px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-top: 8px;
+      }
+      .sizes img {
+        width: auto;
+        height: auto;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Soundboard icon preview</h1>
+      <p>Transparent SVG on checker, app dark, and light backgrounds.</p>
+      <div class="grid">
+        <div class="panel checker">
+          <img src="soundboard-icon-glass-wave.svg" width="160" height="160" alt="" />
+          <span>Transparency</span>
+        </div>
+        <div class="panel dark">
+          <img src="soundboard-icon-glass-wave.svg" width="160" height="160" alt="" />
+          <span>App background #08080a</span>
+        </div>
+        <div class="panel light">
+          <img src="soundboard-icon-glass-wave.svg" width="160" height="160" alt="" />
+          <span>Light dock (test)</span>
+        </div>
+      </div>
+      <p style="margin-top: 32px">Small sizes</p>
+      <div class="panel dark sizes">
+        <img src="soundboard-icon-glass-wave.svg" width="128" height="128" alt="" />
+        <img src="soundboard-icon-glass-wave.svg" width="64" height="64" alt="" />
+        <img src="soundboard-icon-glass-wave.svg" width="32" height="32" alt="" />
+        <img src="soundboard-icon-glass-wave.svg" width="16" height="16" alt="" />
+      </div>
+    </main>
+  </body>
+</html>
