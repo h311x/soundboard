@@ -35,3 +35,5 @@ export function useSliderCommit(
 
 	return { display, onInput, commit, onPointerDown };
 }
+
+export type SliderCommit = ReturnType<typeof useSliderCommit>;

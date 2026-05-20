@@ -1,14 +1,14 @@
 import type { Clip } from "@shared/types";
 import { useState } from "react";
 
-type Props = {
+export type EditClipModalProps = {
 	clip: Clip;
 	onSave: (name: string) => void;
 	onDelete: () => void;
 	onClose: () => void;
 };
 
-export function EditClipModal({ clip, onSave, onDelete, onClose }: Props) {
+export function EditClipModal({ clip, onSave, onDelete, onClose }: EditClipModalProps) {
 	const [value, setValue] = useState(clip.displayName);
 	const [confirmDelete, setConfirmDelete] = useState(false);
 

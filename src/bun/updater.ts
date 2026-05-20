@@ -1,7 +1,11 @@
 import { Updater } from "electrobun/bun";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import type { UpdateDownloadState, UpdateInfo } from "../shared/types";
+import type {
+	BeginDownloadResult,
+	UpdateDownloadState,
+	UpdateInfo,
+} from "../shared/types";
 
 let downloadTask: Promise<UpdateInfo> | null = null;
 let lastStatusMessage = "";
@@ -26,13 +30,26 @@ function tarPathForHash(appDataFolder: string, hash: string): string {
 async function applyTarReadyFix(
 	info: NonNullable<ReturnType<typeof Updater.updateInfo>>,
 ): Promise<NonNullable<ReturnType<typeof Updater.updateInfo>>> {
-	if (info.updateReady || !info.updateAvailable || !info.hash) return info;
+	if (shouldSkipTarReadyFix(info)) return info;
+	return markTarReadyWhenCached(info);
+}
 
+function shouldSkipTarReadyFix(
+	info: NonNullable<ReturnType<typeof Updater.updateInfo>>,
+): boolean {
+	if (info.updateReady) return true;
+	if (!info.updateAvailable) return true;
+	return !info.hash;
+}
+
+async function markTarReadyWhenCached(
+	info: NonNullable<ReturnType<typeof Updater.updateInfo>>,
+): Promise<NonNullable<ReturnType<typeof Updater.updateInfo>>> {
+	if (!info.hash) return info;
 	const appDataFolder = await Updater.appDataFolder();
-	if (existsSync(tarPathForHash(appDataFolder, info.hash))) {
-		info.updateReady = true;
-		info.error = "";
-	}
+	if (!existsSync(tarPathForHash(appDataFolder, info.hash))) return info;
+	info.updateReady = true;
+	info.error = "";
 	return info;
 }
 
@@ -45,33 +62,65 @@ async function readUpdateInfo(): Promise<UpdateInfo> {
 
 function pushProgress(state: UpdateInfo, statusMessage?: string) {
 	if (statusMessage) lastStatusMessage = statusMessage;
-	progressListener?.({
-		...state,
-		downloading: downloadTask !== null,
-		statusMessage: lastStatusMessage || undefined,
-	});
+	progressListener?.(downloadStateFromInfo(state, statusMessage));
+}
+
+function downloadStateFromInfo(
+	state: UpdateInfo,
+	statusMessage?: string,
+): UpdateDownloadState {
+	const downloading = downloadTask !== null;
+	const message = statusMessage ?? lastStatusMessage;
+	if (message === undefined) return { ...state, downloading };
+	return { ...state, downloading, statusMessage: message };
+}
+
+function downloadFailureResult(
+	error: unknown,
+	partial: ReturnType<typeof Updater.updateInfo>,
+): UpdateInfo {
+	return {
+		updateAvailable: failureUpdateAvailable(partial),
+		updateReady: false,
+		version: partial?.version,
+		error: downloadErrorMessage(error),
+	};
+}
+
+function failureUpdateAvailable(
+	partial: ReturnType<typeof Updater.updateInfo>,
+): boolean {
+	if (partial?.updateAvailable) return true;
+	return true;
+}
+
+function downloadErrorMessage(error: unknown): string {
+	if (error instanceof Error) return error.message;
+	return "Download failed";
+}
+
+function downloadSuccessMessage(result: UpdateInfo): string {
+	if (result.updateReady) return "Update ready to install";
+	return fallbackDownloadMessage(result);
+}
+
+function fallbackDownloadMessage(result: UpdateInfo): string {
+	if (result.error) return result.error;
+	if (lastStatusMessage) return lastStatusMessage;
+	return "Download finished";
 }
 
 async function runDownload(): Promise<UpdateInfo> {
 	try {
 		await Updater.downloadUpdate();
 	} catch (e) {
-		const partial = Updater.updateInfo();
-		const result: UpdateInfo = {
-			updateAvailable: partial?.updateAvailable ?? true,
-			updateReady: false,
-			version: partial?.version,
-			error: e instanceof Error ? e.message : "Download failed",
-		};
+		const result = downloadFailureResult(e, Updater.updateInfo());
 		pushProgress(result, result.error ?? "Download failed");
 		return result;
 	}
 
 	const result = await readUpdateInfo();
-	const message = result.updateReady
-		? "Update ready to install"
-		: result.error || lastStatusMessage || "Download finished";
-	pushProgress(result, message);
+	pushProgress(result, downloadSuccessMessage(result));
 	return result;
 }
 
@@ -88,24 +137,10 @@ export function initUpdaterNotifications(
 	});
 }
 
-export function isUpdateDownloading(): boolean {
-	return downloadTask !== null;
-}
-
 export async function getDownloadStatusForApp(): Promise<UpdateDownloadState> {
 	const state = await readUpdateInfo();
-	return {
-		...state,
-		downloading: downloadTask !== null,
-		statusMessage: lastStatusMessage || undefined,
-	};
+	return downloadStateFromInfo(state);
 }
-
-export type BeginDownloadResult = {
-	started: boolean;
-	alreadyDownloading: boolean;
-	state: UpdateDownloadState;
-};
 
 export async function beginDownloadUpdateForApp(): Promise<BeginDownloadResult> {
 	const current = await getDownloadStatusForApp();

@@ -1,7 +1,11 @@
 import type { BrowserWindow } from "electrobun/bun";
-import { extname } from "node:path";
 import type { PlaybackSnapshot } from "../shared/types";
-import { loadAppState, soundFilePath } from "./config";
+import { loadAppState } from "./config";
+import { validateHostPlay } from "./host-playback-validate";
+import {
+	pruneFinishedPlays,
+	snapshotFromPlays,
+} from "./host-playback-snapshot";
 import { sendToWebview } from "./webview-messages";
 
 async function winAudio() {
@@ -19,37 +23,12 @@ const plays: TrackedPlay[] = [];
 let tickTimer: ReturnType<typeof setInterval> | null = null;
 
 function buildSnapshot(now = Date.now()): PlaybackSnapshot {
-	const progress: Record<string, number> = {};
-	const playing: Record<string, boolean> = {};
-
-	for (const play of plays) {
-		playing[play.clipId] = true;
-		const elapsed = now - (play.endsAt - play.durationMs);
-		const raw = play.durationMs > 0 ? elapsed / play.durationMs : 0;
-		progress[play.clipId] = Math.max(
-			progress[play.clipId] ?? 0,
-			Math.min(1, Math.max(0, raw)),
-		);
-		if (now >= play.endsAt) {
-			progress[play.clipId] = 1;
-			playing[play.clipId] = false;
-		}
-	}
-
-	return { progress, playing };
-}
-
-function pruneFinished(now = Date.now()) {
-	for (let i = plays.length - 1; i >= 0; i--) {
-		if (plays[i] && now >= plays[i].endsAt) {
-			plays.splice(i, 1);
-		}
-	}
+	return snapshotFromPlays(plays, now);
 }
 
 function emitSnapshot(win: BrowserWindow) {
 	const now = Date.now();
-	pruneFinished(now);
+	pruneFinishedPlays(plays, now);
 	sendToWebview(win, "playbackSnapshot", buildSnapshot(now));
 }
 
@@ -58,7 +37,7 @@ function ensureTick(win: BrowserWindow) {
 	tickTimer = setInterval(() => {
 		emitSnapshot(win);
 		const now = Date.now();
-		pruneFinished(now);
+		pruneFinishedPlays(plays, now);
 		if (plays.length === 0 && tickTimer) {
 			clearInterval(tickTimer);
 			tickTimer = null;
@@ -74,32 +53,37 @@ export async function playClipOnHost(
 	if (process.platform !== "win32") {
 		return { ok: false, error: "Host audio is only used on Windows" };
 	}
+	return playValidatedClipOnHost(win, clipId);
+}
 
+async function playValidatedClipOnHost(
+	win: BrowserWindow,
+	clipId: string,
+): Promise<{ ok: boolean; error?: string }> {
 	const state = await loadAppState();
-	const clip = state.board.clips.find((c) => c.id === clipId);
-	if (!clip) return { ok: false, error: "Clip not found" };
-	if (clip.missing) return { ok: false, error: "Sound file is missing" };
-
-	const path = soundFilePath(clip.fileName);
 	const audio = await winAudio();
-	if (!audio.isMciSupported(path)) {
-		const ext = extname(clip.fileName).toLowerCase() || "(none)";
-		return {
-			ok: false,
-			error: `${ext} is not supported for Windows routing yet — use MP3 or WAV`,
-		};
-	}
+	const validated = validateHostPlay(
+		state.board.clips,
+		clipId,
+		audio.isMciSupported,
+	);
+	if (!validated.ok) return validated;
 
+	return startHostPlay(win, clipId, validated.path, validated.clip.volume, state.board.masterVolume);
+}
+
+async function startHostPlay(
+	win: BrowserWindow,
+	clipId: string,
+	path: string,
+	clipVolume: number,
+	masterVolume: number,
+): Promise<{ ok: boolean; error?: string }> {
 	try {
-		const volume = clip.volume * state.board.masterVolume;
+		const audio = await winAudio();
+		const volume = clipVolume * masterVolume;
 		const { alias, durationMs } = audio.playFile(clipId, path, volume);
-		const now = Date.now();
-		plays.push({
-			clipId,
-			alias,
-			durationMs,
-			endsAt: now + durationMs,
-		});
+		trackPlay(clipId, alias, durationMs);
 		ensureTick(win);
 		emitSnapshot(win);
 		return { ok: true };
@@ -107,6 +91,11 @@ export async function playClipOnHost(
 		const msg = e instanceof Error ? e.message : "Playback failed";
 		return { ok: false, error: msg };
 	}
+}
+
+function trackPlay(clipId: string, alias: string, durationMs: number): void {
+	const now = Date.now();
+	plays.push({ clipId, alias, durationMs, endsAt: now + durationMs });
 }
 
 export async function stopAllOnHost(win: BrowserWindow) {
@@ -129,10 +118,7 @@ export async function previewClipVolumeOnHost(
 	const state = await loadAppState();
 	const effective = clipVolume * state.board.masterVolume;
 	const audio = await winAudio();
-	for (const play of plays) {
-		if (play.clipId !== clipId) continue;
-		audio.setAliasVolume(play.alias, effective);
-	}
+	applyVolumeToClipPlays(plays, clipId, effective, audio.setAliasVolume);
 }
 
 export async function previewMasterVolumeOnHost(
@@ -142,18 +128,47 @@ export async function previewMasterVolumeOnHost(
 	const state = await loadAppState();
 	const audio = await winAudio();
 	for (const play of plays) {
-		const clip = state.board.clips.find((c) => c.id === play.clipId);
-		if (!clip) continue;
-		audio.setAliasVolume(play.alias, clip.volume * masterVolume);
+		setMasterPreviewVolume(play, state, masterVolume, audio.setAliasVolume);
 	}
+}
+
+function setMasterPreviewVolume(
+	play: TrackedPlay,
+	state: Awaited<ReturnType<typeof loadAppState>>,
+	masterVolume: number,
+	setVolume: (alias: string, volume: number) => void,
+): void {
+	const clip = state.board.clips.find((c) => c.id === play.clipId);
+	if (!clip) return;
+	setVolume(play.alias, clip.volume * masterVolume);
 }
 
 export async function stopClipOnHost(win: BrowserWindow, clipId: string) {
 	if (process.platform !== "win32") return;
 	const audio = await winAudio();
 	audio.stopClip(clipId);
-	for (let i = plays.length - 1; i >= 0; i--) {
-		if (plays[i]?.clipId === clipId) plays.splice(i, 1);
-	}
+	removePlaysForClip(clipId);
 	emitSnapshot(win);
+}
+
+function applyVolumeToClipPlays(
+	playsList: TrackedPlay[],
+	clipId: string,
+	volume: number,
+	setVolume: (alias: string, volume: number) => void,
+): void {
+	for (const play of playsList) {
+		if (play.clipId !== clipId) continue;
+		setVolume(play.alias, volume);
+	}
+}
+
+function removePlaysForClip(clipId: string): void {
+	for (let i = plays.length - 1; i >= 0; i--) {
+		removePlayIndexIfClip(i, clipId);
+	}
+}
+
+function removePlayIndexIfClip(index: number, clipId: string): void {
+	if (plays[index]?.clipId === clipId) plays.splice(index, 1);
 }

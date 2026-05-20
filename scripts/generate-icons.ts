@@ -32,23 +32,19 @@ function renderPng(svg: string, size: number): Uint8Array {
 	return resvg.render().asPng();
 }
 
-async function main() {
-	const svg = await Bun.file(SOURCE).text();
-	if (!svg.trim()) throw new Error(`Empty SVG: ${SOURCE}`);
-
-	await mkdir(join(ROOT, "assets/icon"), { recursive: true });
+async function writeMacIconset(svg: string): Promise<void> {
 	await mkdir(ICONSET_DIR, { recursive: true });
-
 	console.log("Rendering macOS icon.iconset…");
 	for (const { file, size } of ICONSET) {
 		const out = join(ICONSET_DIR, file);
 		await Bun.write(out, renderPng(svg, size));
 		console.log(`  ${file} (${size}px)`);
 	}
-
 	await Bun.write(MASTER_PNG, renderPng(svg, 1024));
 	console.log(`Wrote ${MASTER_PNG}`);
+}
 
+async function writeWindowsIco(svg: string): Promise<void> {
 	console.log("Rendering Windows icon.ico…");
 	const icoPngs: string[] = [];
 	const tmpDir = join(ROOT, "assets/icon/.ico-build");
@@ -61,7 +57,15 @@ async function main() {
 	const ico = await pngToIco(icoPngs);
 	await Bun.write(ICO_PATH, ico);
 	console.log(`Wrote ${ICO_PATH}`);
+}
 
+async function main() {
+	const svg = await Bun.file(SOURCE).text();
+	if (!svg.trim()) throw new Error(`Empty SVG: ${SOURCE}`);
+
+	await mkdir(join(ROOT, "assets/icon"), { recursive: true });
+	await writeMacIconset(svg);
+	await writeWindowsIco(svg);
 	console.log("Done.");
 }
 

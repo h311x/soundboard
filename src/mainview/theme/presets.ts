@@ -54,7 +54,9 @@ export const ACCENT_PRESETS: AccentPreset[] = [
 ];
 
 export function applyAccentPreset(presetId: AccentPresetId) {
-	const preset = ACCENT_PRESETS.find((p) => p.id === presetId) ?? ACCENT_PRESETS[0];
+	const fallback = ACCENT_PRESETS[0];
+	if (!fallback) return;
+	const preset = ACCENT_PRESETS.find((p) => p.id === presetId) ?? fallback;
 	document.documentElement.dataset.accent = preset.id;
 	document.documentElement.style.setProperty("--accent-hsl", preset.accentHsl);
 	document.documentElement.style.setProperty("--mesh-hsl", preset.meshHsl);

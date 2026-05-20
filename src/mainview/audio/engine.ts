@@ -1,4 +1,9 @@
+import type { PlaybackSnapshot } from "@shared/types";
 import { getRpc } from "../rpc";
+import {
+	mergePlayIntoSnapshot,
+	progressForActivePlay,
+} from "./playback-snapshot";
 
 type ActivePlay = {
 	clipId: string;
@@ -10,14 +15,9 @@ type ActivePlay = {
 
 type ProgressListener = () => void;
 
-export type PlaybackSnapshot = {
-	progress: Record<string, number>;
-	playing: Record<string, boolean>;
-};
-
 const EMPTY_SNAPSHOT: PlaybackSnapshot = { progress: {}, playing: {} };
 
-export class AudioEngine {
+class AudioEngine {
 	private ctx: AudioContext | null = null;
 	private masterGain: GainNode | null = null;
 	private buffers = new Map<string, AudioBuffer>();
@@ -48,29 +48,15 @@ export class AudioEngine {
 
 	private buildSnapshot(): PlaybackSnapshot {
 		const ctx = this.ctx;
-		const progress: Record<string, number> = {};
-		const playing: Record<string, boolean> = {};
-
 		if (!ctx) return EMPTY_SNAPSHOT;
 
+		const snapshot: PlaybackSnapshot = { progress: {}, playing: {} };
 		const now = ctx.currentTime;
 		for (const play of this.active) {
-			if (!play.ended) {
-				playing[play.clipId] = true;
-			}
-			if (play.ended) {
-				progress[play.clipId] = 1;
-				continue;
-			}
-			const elapsed = now - play.startedAt;
-			const raw = play.duration > 0 ? elapsed / play.duration : 0;
-			const p =
-				raw >= 0.995 || elapsed >= play.duration - 0.02
-					? 1
-					: Math.min(1, Math.max(0, raw));
-			progress[play.clipId] = Math.max(progress[play.clipId] ?? 0, p);
+			const sample = progressForActivePlay(play, now);
+			mergePlayIntoSnapshot(snapshot, play.clipId, sample.playing, sample.progress);
 		}
-		return { progress, playing };
+		return snapshot;
 	}
 
 	private emitProgress() {
@@ -115,6 +101,10 @@ export class AudioEngine {
 		return this.unlocked && this.ctx?.state === "running";
 	}
 
+	hasBuffer(clipId: string): boolean {
+		return this.buffers.has(clipId);
+	}
+
 	setMasterVolume(volume: number) {
 		if (this.masterGain) this.masterGain.gain.value = volume;
 	}
@@ -138,8 +128,8 @@ export class AudioEngine {
 		if (this.buffers.has(clipId)) return;
 		const bytes = await getRpc().request.readSoundFile({ fileName });
 		const ctx = this.ensureContext();
-		const arrayBuffer = new Uint8Array(bytes).buffer;
-		const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
+		const copy = new Uint8Array(bytes);
+		const audioBuffer = await ctx.decodeAudioData(copy.buffer.slice(0));
 		this.buffers.set(clipId, audioBuffer);
 	}
 
@@ -196,13 +186,7 @@ export class AudioEngine {
 
 	stopClip(clipId: string) {
 		for (const play of this.active) {
-			if (play.clipId !== clipId) continue;
-			play.source.onended = null;
-			try {
-				play.source.stop();
-			} catch {
-				/* already stopped */
-			}
+			if (play.clipId === clipId) stopSource(play);
 		}
 		this.active = this.active.filter((p) => p.clipId !== clipId);
 		this.stopProgressLoopIfIdle();
@@ -226,6 +210,15 @@ export class AudioEngine {
 	removeClip(clipId: string) {
 		this.buffers.delete(clipId);
 		this.clipGains.delete(clipId);
+	}
+}
+
+function stopSource(play: ActivePlay): void {
+	play.source.onended = null;
+	try {
+		play.source.stop();
+	} catch {
+		/* already stopped */
 	}
 }
 

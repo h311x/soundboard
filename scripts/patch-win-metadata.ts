@@ -1,6 +1,5 @@
 /**
  * Patch Windows bundle executables: embed Soundboard icon + PE version strings.
- * Electrobun sets icons at build time; re-applying ensures updates refresh taskbar assets.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
@@ -13,6 +12,8 @@ const APP_NAME = "Soundboard";
 const ROOT = join(import.meta.dir, "..");
 const BUILD_DIR = join(ROOT, "build");
 const ICON_PATH = join(ROOT, "assets/icon/icon.ico");
+
+const PATCHABLE_EXE = new Set(["launcher.exe", "bun.exe", "soundboard.exe"]);
 
 function readVersion(): string {
 	try {
@@ -28,22 +29,40 @@ function readVersion(): string {
 
 const VERSION = readVersion();
 
-function findExes(dir: string, out: string[] = []): string[] {
-	if (!existsSync(dir)) return out;
+function walkDirectory(dir: string, visit: (path: string, isDir: boolean) => void): void {
+	if (!existsSync(dir)) return;
 	for (const entry of readdirSync(dir)) {
-		const full = join(dir, entry);
-		let st;
-		try {
-			st = statSync(full);
-		} catch {
-			continue;
-		}
-		if (st.isDirectory()) {
-			findExes(full, out);
-		} else if (entry.toLowerCase().endsWith(".exe")) {
-			out.push(full);
-		}
+		visitEntry(dir, entry, visit);
 	}
+}
+
+function visitEntry(
+	dir: string,
+	entry: string,
+	visit: (path: string, isDir: boolean) => void,
+): void {
+	const full = join(dir, entry);
+	const st = safeStat(full);
+	if (!st) return;
+	visit(full, st.isDirectory());
+}
+
+function safeStat(path: string) {
+	try {
+		return statSync(path);
+	} catch {
+		return null;
+	}
+}
+
+function findExes(dir: string, out: string[] = []): string[] {
+	walkDirectory(dir, (full, isDir) => {
+		if (isDir) {
+			findExes(full, out);
+			return;
+		}
+		if (full.toLowerCase().endsWith(".exe")) out.push(full);
+	});
 	return out;
 }
 
@@ -91,15 +110,7 @@ if (!existsSync(rceditExe)) {
 	process.exit(1);
 }
 
-const targets = findExes(BUILD_DIR).filter((exe) => {
-	const base = exe.split(/[/\\]/).pop()?.toLowerCase() ?? "";
-	return (
-		base === "launcher.exe" ||
-		base === "bun.exe" ||
-		base === "soundboard.exe" ||
-		base.startsWith("soundboard")
-	);
-});
+const targets = findExes(BUILD_DIR).filter(isPatchableExe);
 
 if (targets.length === 0) {
 	console.warn(`No patchable .exe under ${BUILD_DIR} — skip Windows bundle patch`);
@@ -111,3 +122,9 @@ for (const exe of targets) {
 }
 
 console.log(`Patched ${targets.length} executable(s) (v${VERSION}).`);
+
+function isPatchableExe(exe: string): boolean {
+	const base = exe.split(/[/\\]/).pop()?.toLowerCase() ?? "";
+	if (PATCHABLE_EXE.has(base)) return true;
+	return base.startsWith("soundboard");
+}

@@ -1,35 +1,66 @@
 {
 	"$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+
 	"entry": [
 		"src/bun/index.ts",
 		"src/mainview/main.tsx",
 		"electrobun.config.ts",
-		"vite.config.ts",
-		"eslint.config.mjs",
 		"scripts/*.ts"
 	],
+
 	"ignorePatterns": [
 		"dist/**",
 		"build/**",
 		"artifacts/**",
 		"assets/**"
 	],
-	"ignoreDependencies": ["concurrently"],
+
+	"dynamicallyLoaded": ["src/bun/win-audio.ts"],
+
+	"ignoreExports": [
+		{ "file": "src/bun/win-audio.ts", "exports": ["*"] },
+		{ "file": "electrobun.config.ts", "exports": ["default"] }
+	],
+
+	"ignoreDependencies": [
+		"concurrently",
+		"@resvg/resvg-js",
+		"png-to-ico",
+		"globals",
+		"fallow",
+		"@types/bun"
+	],
+
 	"ignoreExportsUsedInFile": true,
+	"includeEntryExports": false,
+
 	"rules": {
-		"unused-files": "warn",
-		"unused-exports": "warn",
-		"unused-types": "warn",
-		"unused-dependencies": "warn",
-		"unlisted-dependencies": "warn",
-		"duplicate-exports": "warn"
+		"unused-files": "error",
+		"unused-exports": "error",
+		"unused-types": "error",
+		"unused-dependencies": "error",
+		"unlisted-dependencies": "error",
+		"duplicate-exports": "error",
+		"unresolved-imports": "error",
+		"circular-dependencies": "error",
+		"private-type-leaks": "error",
+		"unused-enum-members": "error",
+		"unused-class-members": "error",
+		"stale-suppressions": "warn",
+		"type-only-dependencies": "error",
+		"test-only-dependencies": "error"
 	},
+
 	"duplicates": {
-		"threshold": 0
+		"mode": "strict",
+		"minLines": 5,
+		"minTokens": 40,
+		"threshold": 0.1
 	},
+
 	"health": {
-		"maxCyclomatic": 999,
-		"maxCognitive": 999,
-		"maxCrap": 999
+		"maxCyclomatic": 12,
+		"maxCognitive": 10,
+		"maxCrap": 15
 	}
 }

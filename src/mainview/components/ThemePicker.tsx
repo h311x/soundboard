@@ -1,12 +1,12 @@
 import type { AccentPresetId } from "@shared/types";
 import { ACCENT_PRESETS } from "../theme/presets";
 
-type Props = {
+export type ThemePickerProps = {
 	value: AccentPresetId;
 	onChange: (preset: AccentPresetId) => void;
 };
 
-export function ThemePicker({ value, onChange }: Props) {
+export function ThemePicker({ value, onChange }: ThemePickerProps) {
 	return (
 		<div
 			className="theme-picker electrobun-webkit-app-region-no-drag"

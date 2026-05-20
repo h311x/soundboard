@@ -1,20 +1,18 @@
 import { Utils } from "electrobun/bun";
 import { mkdir, readdir, rename } from "node:fs/promises";
-import { basename, extname, join } from "node:path";
-import type {
-	AccentPresetId,
-	AppState,
-	BoardData,
-	SettingsData,
-} from "../shared/types";
+import { join } from "node:path";
+import type { AppState, BoardData, SettingsData } from "../shared/types";
+import {
+	clipFromSoundFile,
+	DEFAULT_WINDOW,
+	isSoundFileName,
+	migrateBoard,
+	migrateSettings,
+} from "./config-migrate";
 
 const BOARD_FILE = "board.json";
 const SETTINGS_FILE = "settings.json";
 const SOUNDS_DIR = "sounds";
-
-const DEFAULT_WINDOW = { x: 100, y: 100, width: 520, height: 680 };
-
-const SOUND_EXT = new Set([".mp3", ".wav", ".ogg", ".m4a", ".aac", ".webm"]);
 
 const DEFAULT_BOARD: BoardData = {
 	version: 1,
@@ -69,52 +67,35 @@ export function withBoardLock<T>(fn: () => Promise<T>): Promise<T> {
 	return run;
 }
 
-function migrateBoard(board: BoardData): BoardData {
-	if (!board.version) board.version = 1;
-	if (!Array.isArray(board.clips)) board.clips = [];
-	if (typeof board.masterVolume !== "number") board.masterVolume = 1;
-	for (const clip of board.clips) {
-		if (typeof clip.volume !== "number") clip.volume = 1;
-		if (!clip.hotkey) clip.hotkey = "";
-		if (clip.color === undefined) clip.color = null;
-	}
-	return board;
-}
-
-function migrateSettings(settings: Partial<SettingsData>): SettingsData {
-	return {
-		accentPreset: (settings.accentPreset as AccentPresetId) ?? "gray",
-		window: { ...DEFAULT_WINDOW, ...settings.window },
-		alwaysOnTop: settings.alwaysOnTop ?? false,
-	};
-}
-
 async function recoverClipsFromSounds(board: BoardData): Promise<void> {
 	if (board.clips.length > 0) return;
 	await ensureDirs();
-	let entries: string[];
-	try {
-		entries = await readdir(getSoundsDir());
-	} catch {
-		return;
-	}
+	const added = await appendClipsFromSoundDir(board);
+	if (!added) return;
+	console.warn(
+		`Recovered ${board.clips.length} clip(s) from sounds folder (board was empty)`,
+	);
+	await saveBoard(board);
+}
+
+async function appendClipsFromSoundDir(board: BoardData): Promise<boolean> {
+	const entries = await listSoundFiles();
 	for (const fileName of entries) {
-		const ext = extname(fileName).toLowerCase();
-		if (!SOUND_EXT.has(ext)) continue;
-		board.clips.push({
-			id: crypto.randomUUID(),
-			displayName: basename(fileName, ext) || fileName,
-			fileName,
-			hotkey: "",
-			volume: 1,
-			color: null,
-		});
+		appendSoundFileIfValid(board, fileName);
 	}
-	if (board.clips.length > 0) {
-		console.warn(
-			`Recovered ${board.clips.length} clip(s) from sounds folder (board was empty)`,
-		);
-		await saveBoard(board);
+	return board.clips.length > 0;
+}
+
+function appendSoundFileIfValid(board: BoardData, fileName: string): void {
+	if (!isSoundFileName(fileName)) return;
+	board.clips.push(clipFromSoundFile(fileName));
+}
+
+async function listSoundFiles(): Promise<string[]> {
+	try {
+		return await readdir(getSoundsDir());
+	} catch {
+		return [];
 	}
 }
 

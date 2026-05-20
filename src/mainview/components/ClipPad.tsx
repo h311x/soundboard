@@ -1,16 +1,14 @@
 import type { Clip } from "@shared/types";
+import type { ReactNode } from "react";
+import type { SliderCommit } from "../hooks/useSliderCommit";
+import { defaultAnimateLayoutChanges, useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { CLIP_SORTABLE_TRANSITION } from "../app/clipSortableMotion";
 import { useSliderCommit } from "../hooks/useSliderCommit";
-import { formatHotkeyDisplay } from "../utils/hotkey";
+import { ClipPadFooter } from "./ClipPadFooter";
+import { ClipPadPlayZone } from "./ClipPadPlayZone";
 
-/** Elements that must never initiate card reorder drag (WebKit ignores dragstart preventDefault on range inputs). */
-const POINTER_DRAG_BLOCK =
-	"button, input, label, a, .clip-footer, .clip-no-drag";
-
-function pointerBlocksCardDrag(target: HTMLElement): boolean {
-	return !!target.closest(POINTER_DRAG_BLOCK);
-}
-
-type Props = {
+export type ClipPadProps = {
 	clip: Clip;
 	progress: number;
 	isPlaying: boolean;
@@ -20,11 +18,63 @@ type Props = {
 	onEditHotkey: () => void;
 	onVolumePreview: (v: number) => void;
 	onVolumeCommit: (v: number) => void;
-	reorderState?: { dragging: boolean; dragOver: boolean };
-	onReorderPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
 };
 
-export function ClipPad({
+const cancelDragPointer = (e: React.PointerEvent) => {
+	e.stopPropagation();
+};
+
+export function ClipPad(props: ClipPadProps) {
+	const volume = useSliderCommit(
+		props.clip.volume,
+		props.onVolumePreview,
+		props.onVolumeCommit,
+	);
+
+	return (
+		<ClipPadSortable clipId={props.clip.id}>
+			<ClipPadCard {...props} volume={volume} />
+		</ClipPadSortable>
+	);
+}
+
+function ClipPadSortable({
+	clipId,
+	children,
+}: {
+	clipId: string;
+	children: ReactNode;
+}) {
+	const {
+		attributes,
+		listeners,
+		setNodeRef,
+		transform,
+		transition,
+		isDragging,
+	} = useSortable({
+		id: clipId,
+		transition: CLIP_SORTABLE_TRANSITION,
+		animateLayoutChanges: defaultAnimateLayoutChanges,
+	});
+
+	return (
+		<div
+			ref={setNodeRef}
+			style={{
+				transform: CSS.Transform.toString(transform),
+				transition,
+			}}
+			className={`clip-sortable${isDragging ? " is-dragging" : ""}`}
+			{...attributes}
+			{...listeners}
+		>
+			{children}
+		</div>
+	);
+}
+
+function ClipPadCard({
 	clip,
 	progress,
 	isPlaying,
@@ -32,172 +82,54 @@ export function ClipPad({
 	onStop,
 	onEdit,
 	onEditHotkey,
-	onVolumePreview,
-	onVolumeCommit,
-	reorderState,
-	onReorderPointerDown,
-}: Props) {
-	const hasHotkey = Boolean(clip.hotkey);
-	const volume = useSliderCommit(clip.volume, onVolumePreview, onVolumeCommit);
-
-	const handlePadPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-		if (pointerBlocksCardDrag(e.target as HTMLElement)) return;
-		onReorderPointerDown?.(e);
-	};
-
-	const isNestedAction = (el: HTMLElement, zone: HTMLElement) => {
-		const action = el.closest("[role='button']");
-		return action != null && action !== zone;
-	};
-
-	const handlePlayZoneClick = (e: React.MouseEvent<HTMLDivElement>) => {
-		if (clip.missing) return;
-		if (isNestedAction(e.target as HTMLElement, e.currentTarget)) return;
-		onPlay();
-	};
-
-	const handlePlayZoneKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-		if (clip.missing) return;
-		if (e.key !== "Enter" && e.key !== " ") return;
-		if (isNestedAction(e.target as HTMLElement, e.currentTarget)) return;
-		e.preventDefault();
-		onPlay();
-	};
-
+	volume,
+}: ClipPadProps & { volume: SliderCommit }) {
 	return (
-		<div
-			data-clip-id={clip.id}
-			className={`clip-pad glass-panel ${isPlaying ? "playing" : ""} ${progress >= 1 ? "played" : ""} ${clip.missing ? "missing" : ""} ${reorderState?.dragging ? "dragging" : ""} ${reorderState?.dragOver ? "drag-over" : ""}`}
-			onPointerDown={handlePadPointerDown}
-		>
-			<div
-				className="clip-play-zone"
-				role="button"
-				tabIndex={clip.missing ? -1 : 0}
-				aria-disabled={clip.missing || undefined}
-				aria-label={`Play ${clip.displayName}`}
-				onClick={handlePlayZoneClick}
-				onKeyDown={handlePlayZoneKeyDown}
-			>
-				<div className="clip-main">
-					<div className="clip-body">
-						<h3 className="clip-name">{clip.displayName}</h3>
-						{hasHotkey ? (
-							<span
-								role="button"
-								tabIndex={0}
-								className="clip-hotkey-display clip-no-drag"
-								onPointerDown={(e) => e.stopPropagation()}
-								onClick={(e) => {
-									e.stopPropagation();
-									onEditHotkey();
-								}}
-								onKeyDown={(e) => {
-									if (e.key === "Enter" || e.key === " ") {
-										e.preventDefault();
-										e.stopPropagation();
-										onEditHotkey();
-									}
-								}}
-								title="Edit shortcut"
-							>
-								{formatHotkeyDisplay(clip.hotkey)}
-							</span>
-						) : (
-							<span
-								role="button"
-								tabIndex={0}
-								className="clip-hotkey-set clip-no-drag"
-								onPointerDown={(e) => e.stopPropagation()}
-								onClick={(e) => {
-									e.stopPropagation();
-									onEditHotkey();
-								}}
-								onKeyDown={(e) => {
-									if (e.key === "Enter" || e.key === " ") {
-										e.preventDefault();
-										e.stopPropagation();
-										onEditHotkey();
-									}
-								}}
-							>
-								Set shortcut
-							</span>
-						)}
-						{clip.missing && (
-							<span className="clip-badge warn">Missing file</span>
-						)}
-					</div>
-					<span className="clip-play-hint" aria-hidden>
-						<svg viewBox="0 0 16 16" width="14" height="14">
-							<path d="M5 3.5v9l7.5-4.5L5 3.5z" fill="currentColor" />
-						</svg>
-					</span>
-				</div>
-			</div>
-
+		<div data-clip-id={clip.id} className={clipPadClass(isPlaying, progress, clip.missing)}>
+			<ClipPadPlayZone clip={clip} onPlay={onPlay} onEditHotkey={onEditHotkey} />
 			<div className="clip-progress-track" aria-hidden>
 				<span
 					className="clip-progress"
 					style={{ width: `${Math.min(100, progress * 100)}%` }}
 				/>
 			</div>
-
-			<div className="clip-footer clip-no-drag">
-				<label
-					className="clip-volume"
-					onPointerDownCapture={(e) => e.stopPropagation()}
-				>
-					<span className="sr-only">Volume</span>
-					<input
-						type="range"
-						min={0}
-						max={1}
-						step={0.01}
-						value={volume.display}
-						onInput={(e) => volume.onInput(Number(e.currentTarget.value))}
-						onChange={(e) => volume.onInput(Number(e.currentTarget.value))}
-						onPointerUp={volume.commit}
-						onPointerCancel={volume.commit}
-						onKeyUp={volume.commit}
-						className="clip-slider"
-						onPointerDownCapture={(e) => e.stopPropagation()}
-						onClick={(e) => e.stopPropagation()}
-					/>
-				</label>
-
-				<div className="clip-actions">
-					<button
-						type="button"
-						className="clip-action-btn clip-action-btn--stop"
-						onClick={onStop}
-						disabled={!isPlaying}
-						title={isPlaying ? "Stop" : "Not playing"}
-						aria-label={`Stop ${clip.displayName}`}
-					>
-						<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden>
-							<rect x="2" y="2" width="8" height="8" rx="1" fill="currentColor" />
-						</svg>
-					</button>
-					<button
-						type="button"
-						className="clip-action-btn"
-						onClick={onEdit}
-						title="Edit"
-						aria-label={`Edit ${clip.displayName}`}
-					>
-						<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden>
-							<path
-								d="M11.5 2.5a1.4 1.4 0 0 1 2 2L5.8 12.2l-3 .8.8-3 8.9-8.5z"
-								fill="none"
-								stroke="currentColor"
-								strokeWidth="1.4"
-								strokeLinejoin="round"
-							/>
-						</svg>
-					</button>
-				</div>
+			<div
+				onPointerDown={cancelDragPointer}
+				onPointerDownCapture={cancelDragPointer}
+			>
+				<ClipPadFooter
+					clip={clip}
+					volume={volume}
+					isPlaying={isPlaying}
+					onStop={onStop}
+					onEdit={onEdit}
+				/>
 			</div>
 		</div>
 	);
+}
+
+function clipPadClass(
+	isPlaying: boolean,
+	progress: number,
+	missing?: boolean,
+): string {
+	return ["clip-pad", "glass-panel", stateClass(isPlaying, progress, missing)]
+		.filter(Boolean)
+		.join(" ");
+}
+
+function stateClass(
+	isPlaying: boolean,
+	progress: number,
+	missing?: boolean,
+): string {
+	if (missing) return "missing";
+	return playStateClass(isPlaying, progress);
+}
+
+function playStateClass(isPlaying: boolean, progress: number): string {
+	if (isPlaying) return "playing";
+	if (progress >= 1) return "played";
+	return "";
 }

@@ -1,4 +1,9 @@
-type Props = {
+import {
+	getUpdateBannerCopy,
+	type UpdateBannerPhase,
+} from "./update-banner-copy";
+
+export type UpdateBannerProps = {
 	version?: string;
 	ready: boolean;
 	downloading: boolean;
@@ -8,108 +13,176 @@ type Props = {
 	onDismiss: () => void;
 };
 
-export function UpdateBanner({
-	version,
-	ready,
-	downloading,
-	statusMessage,
-	onDownload,
-	onApply,
-	onDismiss,
-}: Props) {
-	const versionLabel = version?.replace(/^v/i, "") ?? "";
-
-	let title: string;
-	let description: string;
-	if (ready) {
-		title = "Ready to install";
-		description = "Restart Soundboard to finish updating.";
-	} else if (downloading) {
-		title = "Downloading update";
-		description =
-			statusMessage ??
-			(versionLabel
-				? `Version ${versionLabel} is on its way.`
-				: "Hang tight — this usually takes a moment.");
-	} else {
-		title = "Update available";
-		description = versionLabel
-			? `Version ${versionLabel} is ready for your soundboard.`
-			: "A newer version is available.";
-	}
+export function UpdateBanner(props: UpdateBannerProps) {
+	const versionLabel = props.version?.replace(/^v/i, "") ?? "";
+	const copy = getUpdateBannerCopy(
+		props.ready,
+		props.downloading,
+		versionLabel,
+		props.statusMessage,
+	);
 
 	return (
 		<section
-			className={`update-banner ${ready ? "update-banner--ready" : ""} ${downloading ? "update-banner--downloading" : ""}`}
+			className={bannerClass(copy.phase, props.downloading)}
 			role="status"
 			aria-live="polite"
 			aria-labelledby="update-banner-title"
 		>
 			<div className="update-banner__glow" aria-hidden />
+			<UpdateBannerIcon phase={copy.phase} />
+			<UpdateBannerBody
+				title={copy.title}
+				description={copy.description}
+				versionLabel={versionLabel}
+				downloading={props.downloading}
+			/>
+			<UpdateBannerActions
+				ready={props.ready}
+				downloading={props.downloading}
+				onDownload={props.onDownload}
+				onApply={props.onApply}
+				onDismiss={props.onDismiss}
+			/>
+			<UpdateBannerClose
+				downloading={props.downloading}
+				onDismiss={props.onDismiss}
+			/>
+		</section>
+	);
+}
 
-			<div className="update-banner__icon" aria-hidden>
-				{ready ? <IconCheck /> : downloading ? <IconDownload /> : <IconSpark />}
+function bannerClass(phase: UpdateBannerPhase, downloading: boolean): string {
+	const parts = ["update-banner"];
+	if (phase === "ready") parts.push("update-banner--ready");
+	if (downloading) parts.push("update-banner--downloading");
+	return parts.join(" ");
+}
+
+function UpdateBannerIcon({ phase }: { phase: UpdateBannerPhase }) {
+	return (
+		<div className="update-banner__icon" aria-hidden>
+			{iconForPhase(phase)}
+		</div>
+	);
+}
+
+function iconForPhase(phase: UpdateBannerPhase) {
+	if (phase === "ready") return <IconCheck />;
+	if (phase === "downloading") return <IconDownload />;
+	return <IconSpark />;
+}
+
+function versionBadge(versionLabel: string, downloading: boolean) {
+	if (!versionLabel || downloading) return null;
+	return <span className="update-banner__version">v{versionLabel}</span>;
+}
+
+function UpdateBannerBody({
+	title,
+	description,
+	versionLabel,
+	downloading,
+}: {
+	title: string;
+	description: string;
+	versionLabel: string;
+	downloading: boolean;
+}) {
+	return (
+		<div className="update-banner__body">
+			<div className="update-banner__headline">
+				<h2 id="update-banner-title" className="update-banner__title">
+					{title}
+				</h2>
+				{versionBadge(versionLabel, downloading)}
 			</div>
-
-			<div className="update-banner__body">
-				<div className="update-banner__headline">
-					<h2 id="update-banner-title" className="update-banner__title">
-						{title}
-					</h2>
-					{versionLabel && !downloading && (
-						<span className="update-banner__version">v{versionLabel}</span>
-					)}
+			<p className="update-banner__desc">{description}</p>
+			{downloading && (
+				<div className="update-banner__progress" aria-hidden>
+					<span className="update-banner__progress-bar" />
 				</div>
-				<p className="update-banner__desc">{description}</p>
-				{downloading && (
-					<div className="update-banner__progress" aria-hidden>
-						<span className="update-banner__progress-bar" />
-					</div>
-				)}
-			</div>
+			)}
+		</div>
+	);
+}
 
+function UpdateBannerActions({
+	ready,
+	downloading,
+	onDownload,
+	onApply,
+	onDismiss,
+}: {
+	ready: boolean;
+	downloading: boolean;
+	onDownload: () => void;
+	onApply: () => void;
+	onDismiss: () => void;
+}) {
+	if (ready) {
+		return (
 			<div className="update-banner__actions">
-				{ready ? (
-					<button type="button" className="btn-primary" onClick={onApply}>
-						Restart now
-					</button>
-				) : (
-					<button
-						type="button"
-						className="btn-primary"
-						onClick={onDownload}
-						disabled={downloading}
-					>
-						{downloading ? "Downloading…" : "Download"}
-					</button>
-				)}
+				<button type="button" className="btn-primary" onClick={onApply}>
+					Restart now
+				</button>
 				<button
 					type="button"
 					className="btn-ghost update-banner__later"
 					onClick={onDismiss}
-					disabled={downloading}
 				>
-					{ready ? "Later" : "Not now"}
+					Later
 				</button>
 			</div>
+		);
+	}
 
+	return (
+		<div className="update-banner__actions">
 			<button
 				type="button"
-				className="update-banner__close"
+				className="btn-primary"
+				onClick={onDownload}
+				disabled={downloading}
+			>
+				{downloading ? "Downloading…" : "Download"}
+			</button>
+			<button
+				type="button"
+				className="btn-ghost update-banner__later"
 				onClick={onDismiss}
 				disabled={downloading}
-				aria-label="Dismiss update"
 			>
-				<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden>
-					<path
-						d="M2 2l8 8M10 2L2 10"
-						stroke="currentColor"
-						strokeWidth="1.5"
-						strokeLinecap="round"
-					/>
-				</svg>
+				Not now
 			</button>
-		</section>
+		</div>
+	);
+}
+
+function UpdateBannerClose({
+	downloading,
+	onDismiss,
+}: {
+	downloading: boolean;
+	onDismiss: () => void;
+}) {
+	return (
+		<button
+			type="button"
+			className="update-banner__close"
+			onClick={onDismiss}
+			disabled={downloading}
+			aria-label="Dismiss update"
+		>
+			<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden>
+				<path
+					d="M2 2l8 8M10 2L2 10"
+					stroke="currentColor"
+					strokeWidth="1.5"
+					strokeLinecap="round"
+				/>
+			</svg>
+		</button>
 	);
 }
 

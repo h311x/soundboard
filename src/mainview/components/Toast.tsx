@@ -1,10 +1,10 @@
-type Props = {
+export type ToastProps = {
 	message: string;
 	variant?: "info" | "error";
 	onDismiss: () => void;
 };
 
-export function Toast({ message, variant = "info", onDismiss }: Props) {
+export function Toast({ message, variant = "info", onDismiss }: ToastProps) {
 	return (
 		<div
 			className={`toast toast-${variant}`}

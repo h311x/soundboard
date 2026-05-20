@@ -18,17 +18,21 @@ Cross-platform desktop soundboard built with [Electrobun](https://blackboard.sh/
 
 ```bash
 bun install
-bun run dev          # Electrobun dev (bundled views)
-bun run dev:hmr      # Vite HMR + Electrobun
+bun run dev          # Vite HMR + Electrobun dev app
 bun run lint         # ESLint (TypeScript + React)
 bun run lint:fix     # ESLint with auto-fix
+bun run typecheck    # TypeScript (tsc --noEmit)
+bun run fallow       # Dead code, duplication, complexity (strict)
+bun run fallow:fix   # Auto-fix where Fallow supports it
+bun run check        # lint + typecheck + fallow
+bun run test         # Unit tests (Bun)
+bun run icons        # Regenerate app icons from assets/icon/
 ```
 
 ## Build
 
 ```bash
-bun run build:stable   # Production build + artifacts/
-bun run build:canary   # Canary channel build
+bun run build        # Production build → artifacts/
 ```
 
 Artifacts land in `artifacts/` for upload to GitHub Releases.

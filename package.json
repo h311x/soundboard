@@ -1,22 +1,24 @@
 {
 	"name": "soundboard",
-	"version": "0.1.10",
+	"version": "0.1.11",
 	"description": "Cross-platform desktop soundboard built with Electrobun",
 	"scripts": {
-		"start": "vite build && electrobun dev",
-		"dev": "electrobun dev --watch",
-		"dev:hmr": "concurrently \"bun run hmr\" \"bun run start\"",
-		"hmr": "vite --port 5173",
-		"build": "vite build",
-		"build:stable": "vite build && electrobun build --env=stable && bun scripts/patch-win-metadata.ts",
-		"build:canary": "vite build && electrobun build --env=canary",
+		"dev": "concurrently \"vite --port 5173\" \"vite build && electrobun dev\"",
+		"build": "vite build && electrobun build --env=stable && bun scripts/patch-win-metadata.ts",
 		"icons": "bun scripts/generate-icons.ts",
 		"lint": "eslint .",
 		"lint:fix": "eslint . --fix",
+		"typecheck": "tsc --noEmit",
 		"fallow": "fallow",
-		"fallow:fix": "fallow fix"
+		"fallow:fix": "fallow fix",
+		"check": "bun run lint && bun run typecheck && bun run fallow",
+		"test": "bun test"
 	},
 	"dependencies": {
+		"@dnd-kit/core": "^6.3.1",
+		"@dnd-kit/modifiers": "^9.0.0",
+		"@dnd-kit/sortable": "^10.0.0",
+		"@dnd-kit/utilities": "^3.2.2",
 		"@fontsource/ibm-plex-mono": "^5.2.7",
 		"@fontsource/instrument-sans": "^5.2.8",
 		"electrobun": "^1.18.1",

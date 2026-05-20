@@ -2,8 +2,7 @@ import { GlobalShortcut } from "electrobun/bun";
 import type { BrowserWindow } from "electrobun/bun";
 import type { BoardData } from "../shared/types";
 import { loadBoard } from "./config";
-import { playClipOnHost } from "./host-playback";
-import { sendToWebview } from "./webview-messages";
+import { registerClipHotkey } from "./hotkey-register";
 
 const registered = new Map<string, string>();
 
@@ -20,26 +19,7 @@ export async function syncHotkeys(
 	unregisterAllHotkeys();
 
 	for (const clip of data.clips) {
-		if (!clip.hotkey || clip.missing) continue;
-		if (registered.has(clip.hotkey)) continue;
-
-		const hotkey = clip.hotkey;
-		const clipId = clip.id;
-		const ok = GlobalShortcut.register(hotkey, () => {
-			if (process.platform === "win32") {
-				void playClipOnHost(win, clipId).then((result) => {
-					if (!result.ok && result.error) {
-						sendToWebview(win, "showToast", {
-							message: result.error,
-							variant: "error",
-						});
-					}
-				});
-				return;
-			}
-			sendToWebview(win, "hotkeyPlay", { id: clipId });
-		});
-		if (ok) registered.set(hotkey, clipId);
+		registerClipHotkey(win, clip, registered);
 	}
 }
 
@@ -49,13 +29,26 @@ export function validateHotkey(
 	hotkey: string,
 ): string | null {
 	if (!hotkey) return null;
-	for (const clip of board.clips) {
-		if (clip.id !== clipId && clip.hotkey === hotkey) {
-			return "Hotkey already used by another clip";
-		}
-	}
-	if (registered.has(hotkey) && registered.get(hotkey) !== clipId) {
-		return "Hotkey already registered";
-	}
-	return null;
+	const boardConflict = findBoardHotkeyConflict(board, clipId, hotkey);
+	if (boardConflict) return boardConflict;
+	return findRegistryConflict(clipId, hotkey);
+}
+
+function findBoardHotkeyConflict(
+	board: BoardData,
+	clipId: string,
+	hotkey: string,
+): string | null {
+	const conflict = board.clips.find(
+		(clip) => clip.id !== clipId && clip.hotkey === hotkey,
+	);
+	if (!conflict) return null;
+	return "Hotkey already used by another clip";
+}
+
+function findRegistryConflict(clipId: string, hotkey: string): string | null {
+	const owner = registered.get(hotkey);
+	if (!owner) return null;
+	if (owner === clipId) return null;
+	return "Hotkey already registered";
 }
