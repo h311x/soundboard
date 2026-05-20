@@ -1,6 +1,6 @@
 {
 	"name": "soundboard",
-	"version": "0.1.4",
+	"version": "0.1.5",
 	"description": "Cross-platform desktop soundboard built with Electrobun",
 	"scripts": {
 		"start": "vite build && electrobun dev",
@@ -8,7 +8,7 @@
 		"dev:hmr": "concurrently \"bun run hmr\" \"bun run start\"",
 		"hmr": "vite --port 5173",
 		"build": "vite build",
-		"build:stable": "vite build && electrobun build --env=stable",
+		"build:stable": "vite build && electrobun build --env=stable && bun scripts/patch-win-metadata.ts",
 		"build:canary": "vite build && electrobun build --env=canary",
 		"icons": "bun scripts/generate-icons.ts"
 	},

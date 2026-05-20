@@ -79,6 +79,18 @@ Right-click `Soundboard.app` → **Open** → confirm **Open** in the dialog. Yo
 
 If macOS still blocks it: **System Settings → Privacy & Security** → **Open Anyway** (shown after a blocked launch attempt).
 
+### Windows icon after update
+
+Windows caches app icons aggressively. The in-app updater replaces the app files (including `launcher.exe` with the embedded icon), but **pinned taskbar / Start menu shortcuts** may still show the old image until the cache refreshes.
+
+Try, in order:
+
+1. **Unpin** Soundboard from the taskbar, then launch it again from the Start menu or install folder and **pin again**.
+2. Restart **File Explorer** (Task Manager → Windows Explorer → Restart), or sign out and back in.
+3. Delete any old desktop shortcut and create a new one from the updated `launcher.exe` under your Electrobun app data folder.
+
+The running app also sets the **window/taskbar button** icon from `Resources/app.ico` on each launch (separate from the cached shortcut icon).
+
 Download `stable-macos-arm64-Soundboard.dmg` or extract the `.tar.zst` (e.g. double-click, or `tar -xf` in Terminal).
 
 ### Apple code signing (optional)
@@ -95,6 +107,14 @@ Then set `mac.codesign` and `mac.notarize` to `true` in `electrobun.config.ts`.
 ## Audio routing
 
 Soundboard plays to the **system default output**. To send audio into calls (Discord, Zoom, etc.), use a virtual audio device such as [BlackHole](https://existential.audio/blackhole/) (macOS) or VB-Cable (Windows).
+
+### Windows: app name in volume mixer / routing tools
+
+On Windows, the UI uses **WebView2**. If sounds were played only inside the webview, Windows would list the audio source as **Microsoft Edge WebView2** or **Windows Feature Experience Pack** (a common label for WebView2’s audio session), not **Soundboard**.
+
+**Soundboard 0.1.5+** plays clips from the main app process (`bun.exe` / `launcher.exe`) on Windows so routing apps (Voicemeeter, OBS, etc.) should show **Soundboard**. Host playback supports **MP3 and WAV**; other formats (OGG, M4A, AAC, WebM) still use WebView audio and may show the generic Windows label.
+
+After building on Windows, `scripts/patch-win-metadata.ts` sets the executable **ProductName** / **FileDescription** to Soundboard for Task Manager and similar UIs.
 
 ## Data
 

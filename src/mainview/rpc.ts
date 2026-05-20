@@ -1,5 +1,6 @@
 import { Electroview } from "electrobun/view";
-import type { AppState, SoundboardRPC } from "@shared/types";
+import type { AppState, PlaybackSnapshot, SoundboardRPC } from "@shared/types";
+import { setHostPlaybackSnapshot } from "./audio/hostPlayback";
 
 export type RpcHandlers = {
 	onStateChanged: (state: AppState) => void;
@@ -15,8 +16,14 @@ let handlers: RpcHandlers = {
 	onShowToast: () => {},
 };
 
+let onRelayout = () => {};
+
 export function setRpcHandlers(next: RpcHandlers) {
 	handlers = next;
+}
+
+export function setRelayoutHandler(fn: () => void) {
+	onRelayout = fn;
 }
 
 export const electroview = new Electroview({
@@ -30,6 +37,9 @@ export const electroview = new Electroview({
 				showToast: ({ message, variant }) =>
 					handlers.onShowToast(message, variant),
 				hotkeyPlay: ({ id }) => handlers.onPlayClip(id),
+				relayout: () => onRelayout(),
+				playbackSnapshot: (payload: PlaybackSnapshot) =>
+					setHostPlaybackSnapshot(payload),
 			},
 		},
 	}),

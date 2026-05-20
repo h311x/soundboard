@@ -37,9 +37,20 @@ export type SettingsData = {
 	alwaysOnTop: boolean;
 };
 
+export type PlatformCapabilities = {
+	/** Play from bun.exe on Windows so audio routing apps see "Soundboard". */
+	hostAudio: boolean;
+};
+
+export type PlaybackSnapshot = {
+	progress: Record<string, number>;
+	playing: Record<string, boolean>;
+};
+
 export type AppState = {
 	board: BoardData;
 	settings: SettingsData;
+	capabilities: PlatformCapabilities;
 };
 
 export type UpdateInfo = {
@@ -86,6 +97,12 @@ export type SoundboardRPC = {
 			downloadUpdate: { params: Record<string, never>; response: UpdateInfo };
 			applyUpdate: { params: Record<string, never>; response: void };
 			saveWindowBounds: { params: WindowState; response: void };
+			playClipAudio: {
+				params: { id: string };
+				response: { ok: boolean; error?: string };
+			};
+			stopAllAudio: { params: Record<string, never>; response: void };
+			stopClipAudio: { params: { id: string }; response: void };
 		};
 		messages: Record<string, never>;
 	}>;
@@ -97,6 +114,8 @@ export type SoundboardRPC = {
 			stateChanged: { state: AppState };
 			showToast: { message: string; variant?: "info" | "error" };
 			hotkeyPlay: { id: string };
+			relayout: Record<string, never>;
+			playbackSnapshot: PlaybackSnapshot;
 		};
 	}>;
 };

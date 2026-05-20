@@ -13,6 +13,9 @@ import {
 	saveSettings,
 } from "./config";
 import { syncHotkeys, unregisterAllHotkeys, validateHotkey } from "./hotkeys";
+import { checkForUpdatesForApp, downloadUpdateForApp } from "./updater";
+import { playClipOnHost, stopAllOnHost, stopClipOnHost } from "./host-playback";
+import { applyBundledWindowIcon } from "./win-icon";
 import { notifyState, sendToWebview } from "./webview-messages";
 
 const DEV_SERVER_PORT = 5173;
@@ -122,23 +125,8 @@ const rpc = BrowserView.defineRPC<SoundboardRPC>({
 				return state;
 			},
 			readSoundFile: async ({ fileName }) => boardOps.readSoundBytes(fileName),
-			checkForUpdates: async () => {
-				const info = await Updater.checkForUpdate();
-				return {
-					updateAvailable: info.updateAvailable,
-					updateReady: info.updateReady,
-					version: info.version,
-					error: info.error,
-				};
-			},
-			downloadUpdate: async () => {
-				await Updater.downloadUpdate();
-				const info = Updater.updateInfo();
-				return {
-					updateAvailable: true,
-					updateReady: info?.updateReady ?? false,
-				};
-			},
+			checkForUpdates: async () => checkForUpdatesForApp(),
+			downloadUpdate: async () => downloadUpdateForApp(),
 			applyUpdate: async () => {
 				if (Updater.updateInfo()?.updateReady) {
 					await Updater.applyUpdate();
@@ -148,6 +136,13 @@ const rpc = BrowserView.defineRPC<SoundboardRPC>({
 				const settings = await loadSettings();
 				settings.window = bounds;
 				await saveSettings(settings);
+			},
+			playClipAudio: async ({ id }) => playClipOnHost(mainWindow, id),
+			stopAllAudio: async () => {
+				await stopAllOnHost(mainWindow);
+			},
+			stopClipAudio: async ({ id }) => {
+				await stopClipOnHost(mainWindow, id);
 			},
 		},
 		messages: {},
@@ -173,7 +168,10 @@ mainWindow = new BrowserWindow({
 
 mainWindow.setAlwaysOnTop(settings.alwaysOnTop);
 
+void applyBundledWindowIcon(mainWindow);
+
 let saveBoundsTimer: ReturnType<typeof setTimeout> | null = null;
+let relayoutTimer: ReturnType<typeof setTimeout> | null = null;
 
 function scheduleSaveBounds() {
 	if (saveBoundsTimer) clearTimeout(saveBoundsTimer);
@@ -192,7 +190,24 @@ function scheduleSaveBounds() {
 	}, 400);
 }
 
-mainWindow.on("resize", scheduleSaveBounds);
+function notifyWebviewRelayout() {
+	if (relayoutTimer) clearTimeout(relayoutTimer);
+	relayoutTimer = setTimeout(() => {
+		sendToWebview(mainWindow, "relayout", {});
+	}, 50);
+}
+
+function notifyWebviewRelayoutBurst() {
+	notifyWebviewRelayout();
+	for (const ms of [150, 400]) {
+		setTimeout(() => sendToWebview(mainWindow, "relayout", {}), ms);
+	}
+}
+
+mainWindow.on("resize", () => {
+	scheduleSaveBounds();
+	notifyWebviewRelayout();
+});
 mainWindow.on("move", scheduleSaveBounds);
 
 Electrobun.events.on("before-quit", async () => {
@@ -212,6 +227,9 @@ Electrobun.events.on("before-quit", async () => {
 await syncHotkeys(mainWindow);
 
 mainWindow.webview.on("dom-ready", async () => {
+	await applyBundledWindowIcon(mainWindow);
+	notifyWebviewRelayoutBurst();
+
 	const state = await loadAppState();
 	notifyState(mainWindow, state);
 

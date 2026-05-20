@@ -1,6 +1,7 @@
 import type { AppState, Clip } from "@shared/types";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { audioEngine } from "./audio/engine";
+import { hostPlaybackStore } from "./audio/hostPlayback";
 import { ClipPad } from "./components/ClipPad";
 import { EditClipModal } from "./components/EditClipModal";
 import { HotkeyModal } from "./components/HotkeyModal";
@@ -21,9 +22,14 @@ export default function App() {
 	const [toast, setToast] = useState<ToastState>(null);
 	const [editClip, setEditClip] = useState<Clip | null>(null);
 	const [hotkeyClip, setHotkeyClip] = useState<Clip | null>(null);
+	const hostAudio = state?.capabilities?.hostAudio ?? false;
 	const playback = useSyncExternalStore(
-		(onStoreChange) => audioEngine.subscribeProgress(onStoreChange),
-		() => audioEngine.getPlaybackSnapshot(),
+		hostAudio
+			? hostPlaybackStore.subscribe
+			: (onStoreChange) => audioEngine.subscribeProgress(onStoreChange),
+		hostAudio
+			? hostPlaybackStore.getSnapshot
+			: () => audioEngine.getPlaybackSnapshot(),
 		() => ({ progress: {}, playing: {} }),
 	);
 	const [showThemePicker, setShowThemePicker] = useState(false);
@@ -44,6 +50,7 @@ export default function App() {
 	}, []);
 
 	const syncAudio = useCallback(async (appState: AppState) => {
+		if (appState.capabilities.hostAudio) return;
 		audioEngine.setMasterVolume(appState.board.masterVolume);
 		for (const clip of appState.board.clips) {
 			audioEngine.setClipVolume(clip.id, clip.volume);
@@ -68,6 +75,13 @@ export default function App() {
 				return;
 			}
 			try {
+				if (stateRef.current?.capabilities.hostAudio) {
+					const result = await getRpc().request.playClipAudio({ id: clip.id });
+					if (!result.ok) {
+						showToast(result.error ?? "Failed to play sound", "error");
+					}
+					return;
+				}
 				if (!audioEngine.isUnlocked()) {
 					await audioEngine.loadClip(clip.id, clip.fileName);
 				}
@@ -125,6 +139,10 @@ export default function App() {
 				if (clip) void playClip(clip);
 			},
 			onStopAll: () => {
+				if (stateRef.current?.capabilities.hostAudio) {
+					void getRpc().request.stopAllAudio({});
+					return;
+				}
 				audioEngine.stopAll();
 			},
 			onShowToast: showToast,
@@ -257,8 +275,18 @@ export default function App() {
 				showThemePicker={showThemePicker}
 				accentPreset={state.settings.accentPreset}
 				onImport={() => void getRpc().request.importViaDialog({}).then(applyState)}
-				onStopAll={() => audioEngine.stopAll()}
-				onMasterVolumePreview={(v) => audioEngine.setMasterVolume(v)}
+				onStopAll={() => {
+					if (state?.capabilities.hostAudio) {
+						void getRpc().request.stopAllAudio({});
+						return;
+					}
+					audioEngine.stopAll();
+				}}
+				onMasterVolumePreview={(v) => {
+					if (!state?.capabilities.hostAudio) {
+						audioEngine.setMasterVolume(v);
+					}
+				}}
 				onMasterVolumeCommit={(v) =>
 					void getRpc().request.setMasterVolume({ volume: v }).then(applyState)
 				}
@@ -283,16 +311,19 @@ export default function App() {
 							.request.downloadUpdate({})
 							.then((info) => {
 								setUpdateInfo(info);
-								setUpdateDownloading(false);
+								if (!info.updateReady && info.error) {
+									showToast(info.error, "error");
+								}
 							})
-							.catch(() => setUpdateDownloading(false));
+							.catch(() => showToast("Update download failed", "error"))
+							.finally(() => setUpdateDownloading(false));
 					}}
 					onApply={() => void getRpc().request.applyUpdate({})}
 					onDismiss={() => setUpdateInfo(null)}
 				/>
 			)}
 
-			{audioBlocked && (
+			{audioBlocked && !state?.capabilities.hostAudio && (
 				<div className="audio-hint glass-panel">
 					Click anywhere to enable audio playback
 				</div>
@@ -336,10 +367,20 @@ export default function App() {
 								progress={playback.progress[clip.id] ?? 0}
 								isPlaying={playback.playing[clip.id] ?? false}
 								onPlay={() => void playClip(clip)}
-								onStop={() => audioEngine.stopClip(clip.id)}
+								onStop={() => {
+									if (state?.capabilities.hostAudio) {
+										void getRpc().request.stopClipAudio({ id: clip.id });
+										return;
+									}
+									audioEngine.stopClip(clip.id);
+								}}
 								onEdit={() => setEditClip(clip)}
 								onEditHotkey={() => setHotkeyClip(clip)}
-								onVolumePreview={(v) => audioEngine.setClipVolume(clip.id, v)}
+								onVolumePreview={(v) => {
+									if (!state?.capabilities.hostAudio) {
+										audioEngine.setClipVolume(clip.id, v);
+									}
+								}}
 								onVolumeCommit={(v) =>
 									void getRpc().request
 										.setClipVolume({ id: clip.id, volume: v })

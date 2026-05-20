@@ -1,26 +1,38 @@
 import { useEffect } from "react";
+import { setRelayoutHandler } from "../rpc";
 
-/** Keeps layout in sync with the webview client area (100vh is wrong until resize on Windows). */
+function syncViewportSize() {
+	const root = document.documentElement;
+	const w = root.clientWidth;
+	const h = root.clientHeight;
+	if (w > 0) root.style.setProperty("--app-width", `${w}px`);
+	if (h > 0) root.style.setProperty("--app-height", `${h}px`);
+}
+
+/** Keeps layout in sync with the webview client area (fixes initial crop on Windows WebView2). */
 export function useAppViewport() {
 	useEffect(() => {
-		const sync = () => {
-			const h = window.visualViewport?.height ?? window.innerHeight;
-			document.documentElement.style.setProperty("--app-height", `${h}px`);
-		};
+		setRelayoutHandler(syncViewportSize);
+		syncViewportSize();
 
-		sync();
-		requestAnimationFrame(sync);
-		const t0 = window.setTimeout(sync, 0);
-		const t1 = window.setTimeout(sync, 120);
+		const raf = requestAnimationFrame(syncViewportSize);
+		const delays = [0, 50, 150, 400, 800].map((ms) =>
+			window.setTimeout(syncViewportSize, ms),
+		);
 
-		window.addEventListener("resize", sync);
-		window.visualViewport?.addEventListener("resize", sync);
+		const ro = new ResizeObserver(syncViewportSize);
+		ro.observe(document.documentElement);
+
+		window.addEventListener("resize", syncViewportSize);
+		window.visualViewport?.addEventListener("resize", syncViewportSize);
 
 		return () => {
-			window.clearTimeout(t0);
-			window.clearTimeout(t1);
-			window.removeEventListener("resize", sync);
-			window.visualViewport?.removeEventListener("resize", sync);
+			setRelayoutHandler(() => {});
+			cancelAnimationFrame(raf);
+			for (const id of delays) window.clearTimeout(id);
+			ro.disconnect();
+			window.removeEventListener("resize", syncViewportSize);
+			window.visualViewport?.removeEventListener("resize", syncViewportSize);
 		};
 	}, []);
 }

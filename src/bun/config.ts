@@ -139,11 +139,16 @@ export async function saveSettings(settings: SettingsData): Promise<void> {
 	await writeJson(join(getUserDataDir(), SETTINGS_FILE), settings);
 }
 
+export function getPlatformCapabilities(): AppState["capabilities"] {
+	return { hostAudio: process.platform === "win32" };
+}
+
 export async function loadAppState(): Promise<AppState> {
 	await ensureDirs();
 	return {
 		board: await loadBoard(),
 		settings: await loadSettings(),
+		capabilities: getPlatformCapabilities(),
 	};
 }
 
