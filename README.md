@@ -33,7 +33,9 @@ Artifacts land in `artifacts/` for upload to GitHub Releases.
 
 ## Releases
 
-Push a tag `v*` to trigger [.github/workflows/release.yml](.github/workflows/release.yml). **Currently enabled** (to save CI minutes):
+Push a tag `v*` to trigger [.github/workflows/release.yml](.github/workflows/release.yml) (pushes to `master` alone do **not** run it). You can also run it manually under **Actions → Build and Release → Run workflow**.
+
+**Currently enabled** (to save CI minutes):
 
 - macOS arm64 (`macos-14`)
 - Windows x64
