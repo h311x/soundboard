@@ -33,13 +33,12 @@ Artifacts land in `artifacts/` for upload to GitHub Releases.
 
 ## Releases
 
-Push a tag `v*` to trigger [.github/workflows/release.yml](.github/workflows/release.yml). Builds run on:
+Push a tag `v*` to trigger [.github/workflows/release.yml](.github/workflows/release.yml). **Currently enabled** (to save CI minutes):
 
 - macOS arm64 (`macos-14`)
-- macOS x64 (`macos-13`)
 - Windows x64
-- Linux x64
-- Linux arm64
+
+**Temporarily disabled** in the workflow (commented out, easy to re-enable): macOS x64, Linux x64, Linux arm64.
 
 Updates are configured in `electrobun.config.ts` (`release.baseUrl` → GitHub Releases). Stable builds check:
 

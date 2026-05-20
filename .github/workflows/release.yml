@@ -21,17 +21,18 @@ jobs:
           name: macos-arm64
           path: artifacts/*
 
-  build-macos-x64:
-    runs-on: macos-13
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install
-      - run: bun run build:stable
-      - uses: actions/upload-artifact@v4
-        with:
-          name: macos-x64
-          path: artifacts/*
+  # Disabled to save CI minutes — re-enable when ready.
+  # build-macos-x64:
+  #   runs-on: macos-13
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: oven-sh/setup-bun@v2
+  #     - run: bun install
+  #     - run: bun run build:stable
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: macos-x64
+  #         path: artifacts/*
 
   build-win-x64:
     runs-on: windows-latest
@@ -45,37 +46,38 @@ jobs:
           name: win-x64
           path: artifacts/*
 
-  build-linux-x64:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install
-      - run: bun run build:stable
-      - uses: actions/upload-artifact@v4
-        with:
-          name: linux-x64
-          path: artifacts/*
+  # Disabled to save CI minutes — re-enable when ready.
+  # build-linux-x64:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: oven-sh/setup-bun@v2
+  #     - run: bun install
+  #     - run: bun run build:stable
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: linux-x64
+  #         path: artifacts/*
 
-  build-linux-arm64:
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install
-      - run: bun run build:stable
-      - uses: actions/upload-artifact@v4
-        with:
-          name: linux-arm64
-          path: artifacts/*
+  # build-linux-arm64:
+  #   runs-on: ubuntu-24.04-arm
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: oven-sh/setup-bun@v2
+  #     - run: bun install
+  #     - run: bun run build:stable
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: linux-arm64
+  #         path: artifacts/*
 
   release:
     needs:
       - build-macos-arm64
-      - build-macos-x64
+      # - build-macos-x64
       - build-win-x64
-      - build-linux-x64
-      - build-linux-arm64
+      # - build-linux-x64
+      # - build-linux-arm64
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
