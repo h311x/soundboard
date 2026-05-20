@@ -20,7 +20,17 @@ type ActiveAlias = {
 
 let winmm: ReturnType<typeof dlopen> | null = null;
 const active: ActiveAlias[] = [];
+const retainedBuffers = new Set<Buffer>();
 let aliasCounter = 0;
+
+function retain(buf: Buffer): Buffer {
+	retainedBuffers.add(buf);
+	if (retainedBuffers.size > 128) {
+		const drop = retainedBuffers.values().next().value;
+		if (drop) retainedBuffers.delete(drop);
+	}
+	return buf;
+}
 
 function ensureWinmm() {
 	if (winmm) return winmm;
@@ -33,17 +43,23 @@ function ensureWinmm() {
 	return winmm;
 }
 
+/** Bun FFI requires null-terminated buffers for cstring args, not JS strings. */
+function mciCommandBuffer(cmd: string): Buffer {
+	return retain(Buffer.from(`${cmd}\0`, "utf8"));
+}
+
 function mci(cmd: string): void {
 	const lib = ensureWinmm();
-	const buf = Buffer.alloc(256);
-	const code = lib.symbols.mciSendStringA(cmd, buf, 255, 0);
+	const cmdBuf = mciCommandBuffer(cmd);
+	const outBuf = retain(Buffer.alloc(256));
+	const code = lib.symbols.mciSendStringA(cmdBuf, outBuf, 255, 0);
 	if (code !== 0) {
 		throw new Error(`MCI failed (${code}): ${cmd}`);
 	}
 }
 
-function escapeMciPath(filePath: string): string {
-	return filePath.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+function mciPathForOpen(filePath: string): string {
+	return filePath.replace(/\\/g, "/");
 }
 
 export function isMciSupported(filePath: string): boolean {
@@ -62,7 +78,7 @@ export function playFile(
 	}
 
 	const alias = `sb${++aliasCounter}`;
-	const path = escapeMciPath(filePath);
+	const path = mciPathForOpen(filePath);
 	const vol = Math.max(0, Math.min(1000, Math.round(volume * 1000)));
 
 	mci(`open "${path}" type ${mciType} alias ${alias}`);
@@ -71,11 +87,14 @@ export function playFile(
 
 	let durationMs = 3000;
 	try {
-		const statusBuf = Buffer.alloc(128);
+		const statusCmd = mciCommandBuffer(`status ${alias} length`);
+		const statusOut = retain(Buffer.alloc(128));
 		const lib = ensureWinmm();
-		lib.symbols.mciSendStringA(`status ${alias} length`, statusBuf, 127, 0);
-		const parsed = Number.parseInt(statusBuf.toString("utf8").trim(), 10);
-		if (Number.isFinite(parsed) && parsed > 0) durationMs = parsed;
+		const code = lib.symbols.mciSendStringA(statusCmd, statusOut, 127, 0);
+		if (code === 0) {
+			const parsed = Number.parseInt(statusOut.toString("utf8").trim(), 10);
+			if (Number.isFinite(parsed) && parsed > 0) durationMs = parsed;
+		}
 	} catch {
 		/* use default duration for progress UI */
 	}

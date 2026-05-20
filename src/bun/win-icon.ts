@@ -4,11 +4,13 @@ import { dirname, join } from "node:path";
 
 /** Resolve app.ico copied into the bundle by Electrobun (build.win.icon). */
 export function resolveBundledAppIcon(): string | null {
-	const base = dirname(process.execPath);
+	const execDir = dirname(process.execPath);
 	const candidates = [
-		join(base, "../Resources/app.ico"),
-		join(base, "../../Resources/app.ico"),
-		join(base, "../app.ico"),
+		join(execDir, "../Resources/app.ico"),
+		join(execDir, "../../Resources/app.ico"),
+		join(execDir, "../app.ico"),
+		join(execDir, "app.ico"),
+		join(execDir, "../../../Resources/app.ico"),
 	];
 	for (const path of candidates) {
 		if (existsSync(path)) return path;
@@ -27,7 +29,7 @@ export async function applyBundledWindowIcon(
 
 	const iconPath = resolveBundledAppIcon();
 	if (!iconPath) {
-		console.warn("Soundboard: app.ico not found in bundle Resources");
+		console.warn("Soundboard: app.ico not found near", process.execPath);
 		return;
 	}
 
@@ -35,7 +37,10 @@ export async function applyBundledWindowIcon(
 		const { native, hasFFI, toCString } = await import(
 			"electrobun/bun/proc/native"
 		);
-		if (!hasFFI || !native?.symbols?.setWindowIcon) return;
+		if (!hasFFI || !native?.symbols?.setWindowIcon) {
+			console.warn("Soundboard: setWindowIcon not available in this build");
+			return;
+		}
 
 		native.symbols.setWindowIcon(win.ptr, toCString(iconPath));
 	} catch (e) {

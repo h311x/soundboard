@@ -207,6 +207,7 @@ function notifyWebviewRelayoutBurst() {
 mainWindow.on("resize", () => {
 	scheduleSaveBounds();
 	notifyWebviewRelayout();
+	void applyBundledWindowIcon(mainWindow);
 });
 mainWindow.on("move", scheduleSaveBounds);
 

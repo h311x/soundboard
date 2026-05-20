@@ -1,20 +1,34 @@
 /**
- * Embed "Soundboard" into Windows PE version info (launcher.exe + bun.exe).
- * Electrobun only sets icons via rcedit; this fixes Task Manager / some routing UIs.
- * Run after `electrobun build` on Windows (or via Wine on macOS CI if needed).
+ * Patch Windows bundle executables: embed Soundboard icon + PE version strings.
+ * Electrobun sets icons at build time; re-applying ensures updates refresh taskbar assets.
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 
 const require = createRequire(import.meta.url);
 
 const APP_NAME = "Soundboard";
-const VERSION = process.env.npm_package_version ?? "0.0.0";
-const BUILD_DIR = join(import.meta.dir, "..", "build");
+const ROOT = join(import.meta.dir, "..");
+const BUILD_DIR = join(ROOT, "build");
+const ICON_PATH = join(ROOT, "assets/icon/icon.ico");
 
-function findExes(dir: string, names: Set<string>, out: string[] = []): string[] {
+function readVersion(): string {
+	try {
+		const pkg = JSON.parse(
+			readFileSync(join(ROOT, "package.json"), "utf8"),
+		) as { version?: string };
+		if (pkg.version) return pkg.version;
+	} catch {
+		/* ignore */
+	}
+	return "0.0.0";
+}
+
+const VERSION = readVersion();
+
+function findExes(dir: string, out: string[] = []): string[] {
 	if (!existsSync(dir)) return out;
 	for (const entry of readdirSync(dir)) {
 		const full = join(dir, entry);
@@ -25,8 +39,8 @@ function findExes(dir: string, names: Set<string>, out: string[] = []): string[]
 			continue;
 		}
 		if (st.isDirectory()) {
-			findExes(full, names, out);
-		} else if (names.has(entry.toLowerCase())) {
+			findExes(full, out);
+		} else if (entry.toLowerCase().endsWith(".exe")) {
 			out.push(full);
 		}
 	}
@@ -34,33 +48,35 @@ function findExes(dir: string, names: Set<string>, out: string[] = []): string[]
 }
 
 function patchExe(exePath: string, rceditExe: string) {
-	console.log(`Patching metadata: ${exePath}`);
-	execFileSync(
-		rceditExe,
-		[
-			exePath,
-			"--set-version-string",
-			"ProductName",
-			APP_NAME,
-			"--set-version-string",
-			"FileDescription",
-			APP_NAME,
-			"--set-version-string",
-			"InternalName",
-			APP_NAME,
-			"--set-version-string",
-			"OriginalFilename",
-			"Soundboard.exe",
-			"--set-version-string",
-			"CompanyName",
-			"h311x",
-			"--set-file-version",
-			VERSION,
-			"--set-product-version",
-			VERSION,
-		],
-		{ stdio: "inherit" },
-	);
+	const args = [
+		exePath,
+		"--set-version-string",
+		"ProductName",
+		APP_NAME,
+		"--set-version-string",
+		"FileDescription",
+		APP_NAME,
+		"--set-version-string",
+		"InternalName",
+		APP_NAME,
+		"--set-version-string",
+		"OriginalFilename",
+		"Soundboard.exe",
+		"--set-version-string",
+		"CompanyName",
+		"h311x",
+		"--set-file-version",
+		VERSION,
+		"--set-product-version",
+		VERSION,
+	];
+
+	if (existsSync(ICON_PATH)) {
+		args.push("--set-icon", ICON_PATH);
+	}
+
+	console.log(`Patching ${exePath}`);
+	execFileSync(rceditExe, args, { stdio: "inherit" });
 }
 
 const rceditPkg = require.resolve("rcedit/package.json");
@@ -75,9 +91,18 @@ if (!existsSync(rceditExe)) {
 	process.exit(1);
 }
 
-const targets = findExes(BUILD_DIR, new Set(["launcher.exe", "bun.exe"]));
+const targets = findExes(BUILD_DIR).filter((exe) => {
+	const base = exe.split(/[/\\]/).pop()?.toLowerCase() ?? "";
+	return (
+		base === "launcher.exe" ||
+		base === "bun.exe" ||
+		base === "soundboard.exe" ||
+		base.startsWith("soundboard")
+	);
+});
+
 if (targets.length === 0) {
-	console.warn(`No launcher.exe/bun.exe under ${BUILD_DIR} — skip metadata patch`);
+	console.warn(`No patchable .exe under ${BUILD_DIR} — skip Windows bundle patch`);
 	process.exit(0);
 }
 
@@ -85,4 +110,4 @@ for (const exe of targets) {
 	patchExe(exe, rceditExe);
 }
 
-console.log(`Patched ${targets.length} executable(s).`);
+console.log(`Patched ${targets.length} executable(s) (v${VERSION}).`);
