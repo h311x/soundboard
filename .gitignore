@@ -9,3 +9,4 @@ artifacts/
 !.env.example
 *.log
 assets/icon/.ico-build/
+.fallow/

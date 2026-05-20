@@ -1,0 +1,35 @@
+{
+	"$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+	"entry": [
+		"src/bun/index.ts",
+		"src/mainview/main.tsx",
+		"electrobun.config.ts",
+		"vite.config.ts",
+		"eslint.config.mjs",
+		"scripts/*.ts"
+	],
+	"ignorePatterns": [
+		"dist/**",
+		"build/**",
+		"artifacts/**",
+		"assets/**"
+	],
+	"ignoreDependencies": ["concurrently"],
+	"ignoreExportsUsedInFile": true,
+	"rules": {
+		"unused-files": "warn",
+		"unused-exports": "warn",
+		"unused-types": "warn",
+		"unused-dependencies": "warn",
+		"unlisted-dependencies": "warn",
+		"duplicate-exports": "warn"
+	},
+	"duplicates": {
+		"threshold": 0
+	},
+	"health": {
+		"maxCyclomatic": 999,
+		"maxCognitive": 999,
+		"maxCrap": 999
+	}
+}

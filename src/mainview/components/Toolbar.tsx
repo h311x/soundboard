@@ -1,5 +1,5 @@
 import type { AccentPresetId } from "@shared/types";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSliderCommit } from "../hooks/useSliderCommit";
 import { ThemePicker } from "./ThemePicker";
@@ -35,11 +35,17 @@ export function Toolbar({
 }: Props) {
 	const themeAnchorRef = useRef<HTMLButtonElement>(null);
 	const popoverRef = useRef<HTMLDivElement>(null);
+	const [popoverRect, setPopoverRect] = useState<DOMRect | null>(null);
 	const master = useSliderCommit(
 		masterVolume,
 		onMasterVolumePreview,
 		onMasterVolumeCommit,
 	);
+
+	const closeThemePicker = useCallback(() => {
+		setPopoverRect(null);
+		onCloseTheme();
+	}, [onCloseTheme]);
 
 	useEffect(() => {
 		if (!showThemePicker) return;
@@ -52,28 +58,28 @@ export function Toolbar({
 			) {
 				return;
 			}
-			onCloseTheme();
+			closeThemePicker();
 		};
 
 		window.addEventListener("pointerdown", onPointerDown);
 		return () => window.removeEventListener("pointerdown", onPointerDown);
-	}, [showThemePicker, onCloseTheme]);
+	}, [showThemePicker, closeThemePicker]);
 
 	const popover =
 		showThemePicker &&
-		themeAnchorRef.current &&
+		popoverRect &&
 		createPortal(
 			<div
 				ref={popoverRef}
 				className="theme-picker-popover glass-panel electrobun-webkit-app-region-no-drag"
-				style={getPopoverPosition(themeAnchorRef.current)}
+				style={getPopoverPosition(popoverRect)}
 			>
 				<p className="theme-picker-label">Accent</p>
 				<ThemePicker
 					value={accentPreset}
 					onChange={(preset) => {
 						onAccent(preset);
-						onCloseTheme();
+						closeThemePicker();
 					}}
 				/>
 			</div>,
@@ -133,6 +139,12 @@ export function Toolbar({
 						className={`icon-btn theme-toggle electrobun-webkit-app-region-no-drag ${showThemePicker ? "active" : ""}`}
 						onClick={(e) => {
 							e.stopPropagation();
+							if (showThemePicker) {
+								closeThemePicker();
+								return;
+							}
+							const rect = themeAnchorRef.current?.getBoundingClientRect();
+							if (rect) setPopoverRect(rect);
 							onToggleTheme();
 						}}
 						onPointerDown={(e) => e.stopPropagation()}
@@ -150,8 +162,7 @@ export function Toolbar({
 	);
 }
 
-function getPopoverPosition(anchor: HTMLElement) {
-	const rect = anchor.getBoundingClientRect();
+function getPopoverPosition(rect: DOMRect) {
 	return {
 		position: "fixed" as const,
 		top: rect.bottom + 8,

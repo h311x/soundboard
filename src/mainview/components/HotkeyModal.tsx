@@ -40,13 +40,6 @@ export function HotkeyModal({ clip, onSave, onClose }: Props) {
 	const [liveParts, setLiveParts] = useState<string[]>([]);
 
 	useEffect(() => {
-		setDraft(clip.hotkey);
-		setRecording(false);
-		setLiveParts([]);
-		setSaving(false);
-	}, [clip.id, clip.hotkey]);
-
-	useEffect(() => {
 		if (!recording) return;
 
 		const onKeyDown = (e: KeyboardEvent) => {

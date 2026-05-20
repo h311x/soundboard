@@ -10,27 +10,37 @@
 		"build": "vite build",
 		"build:stable": "vite build && electrobun build --env=stable && bun scripts/patch-win-metadata.ts",
 		"build:canary": "vite build && electrobun build --env=canary",
-		"icons": "bun scripts/generate-icons.ts"
+		"icons": "bun scripts/generate-icons.ts",
+		"lint": "eslint .",
+		"lint:fix": "eslint . --fix",
+		"fallow": "fallow",
+		"fallow:fix": "fallow fix"
 	},
 	"dependencies": {
-		"@fontsource/ibm-plex-mono": "^5.2.5",
-		"@fontsource/instrument-sans": "^5.2.5",
-		"electrobun": "1.18.1",
-		"react": "^18.3.1",
-		"react-dom": "^18.3.1"
+		"@fontsource/ibm-plex-mono": "^5.2.7",
+		"@fontsource/instrument-sans": "^5.2.8",
+		"electrobun": "^1.18.1",
+		"react": "^19.2.6",
+		"react-dom": "^19.2.6"
 	},
 	"devDependencies": {
+		"@eslint/js": "^10.0.1",
 		"@resvg/resvg-js": "^2.6.2",
+		"@tailwindcss/vite": "^4.3.0",
 		"@types/bun": "latest",
-		"@types/react": "^18.3.12",
-		"@types/react-dom": "^18.3.1",
-		"@vitejs/plugin-react": "^4.3.4",
-		"png-to-ico": "^2.1.8",
-		"autoprefixer": "^10.4.20",
-		"concurrently": "^9.1.0",
-		"postcss": "^8.4.49",
-		"tailwindcss": "^3.4.16",
-		"typescript": "^5.7.2",
-		"vite": "^6.0.3"
+		"@types/react": "^19.2.15",
+		"@types/react-dom": "^19.2.3",
+		"@vitejs/plugin-react": "^6.0.2",
+		"concurrently": "^9.2.1",
+		"eslint": "^10.4.0",
+		"eslint-plugin-react-hooks": "^7.1.1",
+		"eslint-plugin-react-refresh": "^0.5.2",
+		"fallow": "^2.76.0",
+		"globals": "^17.6.0",
+		"png-to-ico": "^3.0.1",
+		"tailwindcss": "^4.3.0",
+		"typescript": "^6.0.3",
+		"typescript-eslint": "^8.59.4",
+		"vite": "^8.0.13"
 	}
 }

@@ -5,7 +5,7 @@ import { loadBoard } from "./config";
 import { playClipOnHost } from "./host-playback";
 import { sendToWebview } from "./webview-messages";
 
-let registered = new Map<string, string>();
+const registered = new Map<string, string>();
 
 export function unregisterAllHotkeys(): void {
 	GlobalShortcut.unregisterAll();

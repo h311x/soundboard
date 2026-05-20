@@ -5,7 +5,7 @@ import Electrobun, {
 	Utils,
 } from "electrobun/bun";
 import type { SoundboardRPC } from "../shared/types";
-import type { AccentPresetId, WindowState } from "../shared/types";
+import type { WindowState } from "../shared/types";
 import * as boardOps from "./board";
 import {
 	loadAppState,
@@ -26,7 +26,6 @@ import {
 	stopAllOnHost,
 	stopClipOnHost,
 } from "./host-playback";
-import { applyBundledWindowIcon, scheduleBundledWindowIcon } from "./win-icon";
 import { notifyState, sendToWebview } from "./webview-messages";
 import { refreshWebviewLayout } from "./webview-layout";
 
@@ -47,6 +46,8 @@ async function getMainViewUrl(): Promise<string> {
 	return "views://mainview/index.html";
 }
 
+// Assigned after RPC handlers are defined (handlers close over this reference).
+// eslint-disable-next-line prefer-const -- must be `let`; `const` is invalid before assignment
 let mainWindow: BrowserWindow;
 
 const rpc = BrowserView.defineRPC<SoundboardRPC>({
@@ -127,7 +128,7 @@ const rpc = BrowserView.defineRPC<SoundboardRPC>({
 			},
 			setAccentPreset: async ({ preset }) => {
 				const settings = await loadSettings();
-				settings.accentPreset = preset as AccentPresetId;
+				settings.accentPreset = preset;
 				await saveSettings(settings);
 				const state = await loadAppState();
 				notifyState(mainWindow, state);
@@ -163,10 +164,10 @@ const rpc = BrowserView.defineRPC<SoundboardRPC>({
 			stopClipAudio: async ({ id }) => {
 				await stopClipOnHost(mainWindow, id);
 			},
-			minimizeWindow: async () => {
+			minimizeWindow: () => {
 				mainWindow.minimize();
 			},
-			closeWindow: async () => {
+			closeWindow: () => {
 				mainWindow.close();
 			},
 		},
@@ -199,9 +200,6 @@ initUpdaterNotifications((state) => {
 	sendToWebview(mainWindow, "updateDownloadProgress", state);
 });
 
-void applyBundledWindowIcon(mainWindow);
-scheduleBundledWindowIcon(mainWindow);
-
 let saveBoundsTimer: ReturnType<typeof setTimeout> | null = null;
 
 function scheduleSaveBounds() {
@@ -221,10 +219,7 @@ function scheduleSaveBounds() {
 	}, 400);
 }
 
-mainWindow.on("resize", () => {
-	scheduleSaveBounds();
-	void applyBundledWindowIcon(mainWindow);
-});
+mainWindow.on("resize", scheduleSaveBounds);
 mainWindow.on("move", scheduleSaveBounds);
 
 Electrobun.events.on("before-quit", async () => {
@@ -244,8 +239,6 @@ Electrobun.events.on("before-quit", async () => {
 await syncHotkeys(mainWindow);
 
 mainWindow.webview.on("dom-ready", async () => {
-	await applyBundledWindowIcon(mainWindow);
-	scheduleBundledWindowIcon(mainWindow);
 	refreshWebviewLayout(mainWindow);
 
 	const state = await loadAppState();

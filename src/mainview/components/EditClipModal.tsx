@@ -1,5 +1,5 @@
 import type { Clip } from "@shared/types";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 type Props = {
 	clip: Clip;
@@ -11,11 +11,6 @@ type Props = {
 export function EditClipModal({ clip, onSave, onDelete, onClose }: Props) {
 	const [value, setValue] = useState(clip.displayName);
 	const [confirmDelete, setConfirmDelete] = useState(false);
-
-	useEffect(() => {
-		setValue(clip.displayName);
-		setConfirmDelete(false);
-	}, [clip.id, clip.displayName]);
 
 	if (confirmDelete) {
 		return (

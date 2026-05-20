@@ -20,6 +20,8 @@ Cross-platform desktop soundboard built with [Electrobun](https://blackboard.sh/
 bun install
 bun run dev          # Electrobun dev (bundled views)
 bun run dev:hmr      # Vite HMR + Electrobun
+bun run lint         # ESLint (TypeScript + React)
+bun run lint:fix     # ESLint with auto-fix
 ```
 
 ## Build
@@ -48,16 +50,19 @@ Updates are configured in `electrobun.config.ts` (`release.baseUrl` → GitHub R
 
 ### Cut a release
 
-1. Bump `version` in `package.json` and `electrobun.config.ts`.
-2. Commit and tag:
+1. Bump `version` in `package.json` and `electrobun.config.ts` **in the same commit** as the code you are shipping.
+2. Push `master`, then create and push the tag **once**:
 
 ```bash
+git push origin master
 git tag v0.1.0
 git push origin v0.1.0
 ```
 
-3. GitHub Actions builds all platforms and publishes assets to the Release.
+3. GitHub Actions builds enabled platforms and publishes assets to the Release.
 4. Installed apps on the **stable** channel pick up updates automatically (in-app banner + restart).
+
+**Avoid duplicate CI runs:** the release workflow runs on every `v*` tag push. If you tag the wrong commit and then `git push -f origin v0.1.0` to move the tag, GitHub starts a **second** pipeline even though the tag name is unchanged. Fix the commit first, then tag once; or cancel the extra run in Actions.
 
 ### macOS install (unsigned builds)
 
@@ -89,8 +94,6 @@ Try, in order:
 2. Restart **File Explorer** (Task Manager → Windows Explorer → Restart), or sign out and back in.
 3. Delete any old desktop shortcut and create a new one from the updated `launcher.exe` under your Electrobun app data folder.
 
-The running app also sets the **window/taskbar button** icon from `Resources/app.ico` on each launch (separate from the cached shortcut icon).
-
 Download `stable-macos-arm64-Soundboard.dmg` or extract the `.tar.zst` (e.g. double-click, or `tar -xf` in Terminal).
 
 ### Apple code signing (optional)
@@ -121,6 +124,14 @@ If the taskbar icon is still stale after updating: unpin Soundboard, quit the ap
 ### Windows window chrome
 
 Soundboard uses the **native Windows title bar** (minimize, maximize, close, resize). Electrobun/WebView2 does not expose deep DWM/title-bar theming; customization is mainly the **app icon** and **window title** (“Soundboard”). The in-app toolbar is not a drag region on Windows so volume sliders work correctly.
+
+### Windows: startup layout (right/bottom crop)
+
+On first launch, the webview can look slightly **cropped on the right and bottom** until you resize the window. That is not a CSS bug in Soundboard — it is a known Electrobun/WebView2 issue: with a default frame, the initial `window.innerWidth` / `innerHeight` include the native title bar chrome, so the page is laid out ~16px too wide and ~28px too tall until the first resize syncs the webview to the real client area.
+
+- **Upstream:** [blackboardsh/electrobun#431](https://github.com/blackboardsh/electrobun/issues/431)
+- **Workaround in this repo:** on `dom-ready`, Bun runs a one-pixel `setSize` nudge so Electrobun’s `autoResize` recalculates bounds before the UI paints (`src/bun/webview-layout.ts`). The UI uses `position: fixed; inset: 0` only — no `100vw`/`100vh` scaling hacks.
+- **Do not** use `<meta name="viewport" content="width=device-width">` in the bundled HTML; it fights the desktop host viewport.
 
 ## Data
 

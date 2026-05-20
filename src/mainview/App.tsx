@@ -1,4 +1,4 @@
-import type { AppState, Clip } from "@shared/types";
+import type { AppState, Clip, PlaybackSnapshot } from "@shared/types";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { audioEngine } from "./audio/engine";
 import { hostPlaybackStore } from "./audio/hostPlayback";
@@ -15,20 +15,35 @@ import { eventToAccelerator } from "./utils/hotkey";
 
 type ToastState = { message: string; variant?: "info" | "error" } | null;
 
+const EMPTY_PLAYBACK: PlaybackSnapshot = { progress: {}, playing: {} };
+
 export default function App() {
 	const [state, setState] = useState<AppState | null>(null);
 	const [toast, setToast] = useState<ToastState>(null);
 	const [editClip, setEditClip] = useState<Clip | null>(null);
 	const [hotkeyClip, setHotkeyClip] = useState<Clip | null>(null);
 	const hostAudio = state?.capabilities?.hostAudio ?? false;
+
+	const subscribePlayback = useCallback(
+		(onStoreChange: () => void) =>
+			hostAudio
+				? hostPlaybackStore.subscribe(onStoreChange)
+				: audioEngine.subscribeProgress(onStoreChange),
+		[hostAudio],
+	);
+
+	const getPlayback = useCallback(
+		(): PlaybackSnapshot =>
+			hostAudio
+				? hostPlaybackStore.getSnapshot()
+				: audioEngine.getPlaybackSnapshot(),
+		[hostAudio],
+	);
+
 	const playback = useSyncExternalStore(
-		hostAudio
-			? hostPlaybackStore.subscribe
-			: (onStoreChange) => audioEngine.subscribeProgress(onStoreChange),
-		hostAudio
-			? hostPlaybackStore.getSnapshot
-			: () => audioEngine.getPlaybackSnapshot(),
-		() => ({ progress: {}, playing: {} }),
+		subscribePlayback,
+		getPlayback,
+		() => EMPTY_PLAYBACK,
 	);
 	const [showThemePicker, setShowThemePicker] = useState(false);
 	const [dragId, setDragId] = useState<string | null>(null);
@@ -399,20 +414,21 @@ export default function App() {
 
 			{editClip && (
 				<EditClipModal
+					key={editClip.id}
 					clip={editClip}
 					onClose={() => setEditClip(null)}
 					onSave={(name) =>
 						void getRpc().request
 							.renameClip({ id: editClip.id, displayName: name })
 							.then((s) => {
-								applyState(s);
+								void applyState(s);
 								setEditClip(null);
 							})
 					}
 					onDelete={() =>
 						void getRpc().request.deleteClip({ id: editClip.id }).then((s) => {
 							audioEngine.removeClip(editClip.id);
-							applyState(s);
+							void applyState(s);
 							setEditClip(null);
 						})
 					}
@@ -421,6 +437,7 @@ export default function App() {
 
 			{hotkeyClip && (
 				<HotkeyModal
+					key={hotkeyClip.id}
 					clip={hotkeyClip}
 					onClose={() => setHotkeyClip(null)}
 					onSave={async (hotkey) => {

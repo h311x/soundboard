@@ -19,6 +19,6 @@
 		"noUnusedParameters": true,
 		"noFallthroughCasesInSwitch": true
 	},
-	"include": ["src", "src/types"],
+	"include": ["src", "scripts", "src/types", "vite.config.ts", "electrobun.config.ts"],
 	"exclude": ["node_modules", "dist", "build", "../../package/dist"]
 }

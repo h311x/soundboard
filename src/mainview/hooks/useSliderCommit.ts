@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
+import { useCallback, useRef, useState, type PointerEvent } from "react";
 
 /** Local slider value while dragging; persist only on commit. */
 export function useSliderCommit(
@@ -10,19 +10,16 @@ export function useSliderCommit(
 	const draggingRef = useRef(false);
 	const display = local ?? value;
 
-	// Clear local only after persisted value catches up (avoids thumb jumping on commit).
-	useEffect(() => {
-		if (draggingRef.current || local === null) return;
-		if (Math.abs(value - local) < 0.005) setLocal(null);
-	}, [value, local]);
-
 	const onInput = useCallback(
 		(next: number) => {
+			if (local !== null && Math.abs(value - local) < 0.005) {
+				setLocal(null);
+			}
 			draggingRef.current = true;
 			setLocal(next);
 			onPreview(next);
 		},
-		[onPreview],
+		[local, onPreview, value],
 	);
 
 	const commit = useCallback(() => {

@@ -54,7 +54,7 @@ function mci(cmd: string): void {
 	const outBuf = retain(Buffer.alloc(256));
 	const code = lib.symbols.mciSendStringA(cmdBuf, outBuf, 255, 0);
 	if (code !== 0) {
-		throw new Error(`MCI failed (${code}): ${cmd}`);
+		throw new Error(`MCI failed (${String(code)}): ${cmd}`);
 	}
 }
 
