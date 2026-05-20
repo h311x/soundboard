@@ -10,11 +10,13 @@ import { UpdateBanner } from "./components/UpdateBanner";
 import type { UpdateInfo } from "@shared/types";
 import { getRpc, setRpcHandlers } from "./rpc";
 import { applyAccentPreset } from "./theme/presets";
+import { useAppViewport } from "./hooks/useAppViewport";
 import { eventToAccelerator } from "./utils/hotkey";
 
 type ToastState = { message: string; variant?: "info" | "error" } | null;
 
 export default function App() {
+	useAppViewport();
 	const [state, setState] = useState<AppState | null>(null);
 	const [toast, setToast] = useState<ToastState>(null);
 	const [editClip, setEditClip] = useState<Clip | null>(null);

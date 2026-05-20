@@ -24,6 +24,15 @@
 	--titlebar-inset-left: 76px;
 }
 
+/* Windows uses the native title bar — hide in-webview duplicate chrome */
+:root[data-platform="windows"] .titlebar {
+	display: none;
+}
+
+:root[data-platform="windows"] .toolbar {
+	padding-top: 12px;
+}
+
 @media (prefers-reduced-motion: reduce) {
 	:root {
 		--motion-enabled: 0;

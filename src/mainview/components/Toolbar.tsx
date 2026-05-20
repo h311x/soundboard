@@ -89,7 +89,14 @@ export function Toolbar({
 				<h1 className="app-title">Soundboard</h1>
 			</div>
 
-			<header className="toolbar electrobun-webkit-app-region-no-drag">
+			<header
+				className={`toolbar ${
+					typeof document !== "undefined" &&
+					document.documentElement.dataset.platform === "windows"
+						? "toolbar--window-drag electrobun-webkit-app-region-drag"
+						: "electrobun-webkit-app-region-no-drag"
+				}`}
+			>
 				<div className="toolbar-actions">
 					<button type="button" className="btn-primary" onClick={onImport}>
 						Import

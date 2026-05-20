@@ -216,13 +216,7 @@ mainWindow.webview.on("dom-ready", async () => {
 	notifyState(mainWindow, state);
 
 	try {
-		const update = await Updater.checkForUpdate();
-		if (update.updateAvailable) {
-			sendToWebview(mainWindow, "showToast", {
-				message: `Update ${update.version} available`,
-				variant: "info",
-			});
-		}
+		await Updater.checkForUpdate();
 	} catch (e) {
 		console.error("Update check failed:", e);
 	}
