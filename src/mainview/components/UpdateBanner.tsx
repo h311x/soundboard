@@ -2,6 +2,7 @@ type Props = {
 	version?: string;
 	ready: boolean;
 	downloading: boolean;
+	statusMessage?: string;
 	onDownload: () => void;
 	onApply: () => void;
 	onDismiss: () => void;
@@ -11,6 +12,7 @@ export function UpdateBanner({
 	version,
 	ready,
 	downloading,
+	statusMessage,
 	onDownload,
 	onApply,
 	onDismiss,
@@ -24,9 +26,11 @@ export function UpdateBanner({
 		description = "Restart Soundboard to finish updating.";
 	} else if (downloading) {
 		title = "Downloading update";
-		description = versionLabel
-			? `Version ${versionLabel} is on its way.`
-			: "Hang tight — this usually takes a moment.";
+		description =
+			statusMessage ??
+			(versionLabel
+				? `Version ${versionLabel} is on its way.`
+				: "Hang tight — this usually takes a moment.");
 	} else {
 		title = "Update available";
 		description = versionLabel

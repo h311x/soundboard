@@ -1,5 +1,10 @@
 import { Electroview } from "electrobun/view";
-import type { AppState, PlaybackSnapshot, SoundboardRPC } from "@shared/types";
+import type {
+	AppState,
+	PlaybackSnapshot,
+	SoundboardRPC,
+	UpdateDownloadState,
+} from "@shared/types";
 import { setHostPlaybackSnapshot } from "./audio/hostPlayback";
 
 export type RpcHandlers = {
@@ -17,6 +22,13 @@ let handlers: RpcHandlers = {
 };
 
 let onRelayout = () => {};
+let onUpdateDownload: ((state: UpdateDownloadState) => void) | null = null;
+
+export function setUpdateDownloadHandler(
+	handler: ((state: UpdateDownloadState) => void) | null,
+) {
+	onUpdateDownload = handler;
+}
 
 export function setRpcHandlers(next: RpcHandlers) {
 	handlers = next;
@@ -26,8 +38,8 @@ export function setRelayoutHandler(fn: () => void) {
 	onRelayout = fn;
 }
 
-/** Webview → bun requests; default Electrobun timeout is 1s which breaks update downloads. */
-const RPC_MAX_REQUEST_MS = 600_000;
+/** Status polls are fast; download runs in Bun without blocking RPC. */
+const RPC_MAX_REQUEST_MS = 60_000;
 
 export const electroview = new Electroview({
 	rpc: Electroview.defineRPC<SoundboardRPC>({
@@ -44,6 +56,7 @@ export const electroview = new Electroview({
 				relayout: () => onRelayout(),
 				playbackSnapshot: (payload: PlaybackSnapshot) =>
 					setHostPlaybackSnapshot(payload),
+				updateDownloadProgress: (payload) => onUpdateDownload?.(payload),
 			},
 		},
 	}),

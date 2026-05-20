@@ -1,10 +1,11 @@
 import { Updater } from "electrobun/bun";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import type { UpdateInfo } from "../shared/types";
+import type { UpdateDownloadState, UpdateInfo } from "../shared/types";
 
-const TAR_POLL_MS = 250;
-const TAR_POLL_MAX_MS = 120_000;
+let downloadTask: Promise<UpdateInfo> | null = null;
+let lastStatusMessage = "";
+let progressListener: ((state: UpdateDownloadState) => void) | null = null;
 
 function toUpdateInfo(
 	info: NonNullable<ReturnType<typeof Updater.updateInfo>>,
@@ -21,51 +22,118 @@ function tarPathForHash(appDataFolder: string, hash: string): string {
 	return join(appDataFolder, "self-extraction", `${hash}.tar`);
 }
 
-/**
- * Electrobun's downloadUpdate() can finish writing the tar but leave updateReady false
- * because it re-checks with Bun.file().exists(), which caches a stale false (Updater.ts ~727).
- */
-async function waitForTarFile(
-	appDataFolder: string,
-	hash: string,
-): Promise<boolean> {
-	const path = tarPathForHash(appDataFolder, hash);
-	const deadline = Date.now() + TAR_POLL_MAX_MS;
-	while (Date.now() < deadline) {
-		if (existsSync(path)) return true;
-		await Bun.sleep(TAR_POLL_MS);
+/** Electrobun may leave updateReady false while the tar exists (Bun.file().exists cache). */
+async function applyTarReadyFix(
+	info: NonNullable<ReturnType<typeof Updater.updateInfo>>,
+): Promise<NonNullable<ReturnType<typeof Updater.updateInfo>>> {
+	if (info.updateReady || !info.updateAvailable || !info.hash) return info;
+
+	const appDataFolder = await Updater.appDataFolder();
+	if (existsSync(tarPathForHash(appDataFolder, info.hash))) {
+		info.updateReady = true;
+		info.error = "";
 	}
-	return existsSync(path);
+	return info;
 }
 
-export async function downloadUpdateForApp(): Promise<UpdateInfo> {
+async function readUpdateInfo(): Promise<UpdateInfo> {
+	const raw = Updater.updateInfo();
+	if (!raw) return { updateAvailable: false, updateReady: false };
+	const fixed = await applyTarReadyFix(raw);
+	return toUpdateInfo(fixed);
+}
+
+function pushProgress(state: UpdateInfo, statusMessage?: string) {
+	if (statusMessage) lastStatusMessage = statusMessage;
+	progressListener?.({
+		...state,
+		downloading: downloadTask !== null,
+		statusMessage: lastStatusMessage || undefined,
+	});
+}
+
+async function runDownload(): Promise<UpdateInfo> {
 	try {
 		await Updater.downloadUpdate();
 	} catch (e) {
 		const partial = Updater.updateInfo();
-		return {
+		const result: UpdateInfo = {
 			updateAvailable: partial?.updateAvailable ?? true,
 			updateReady: false,
 			version: partial?.version,
 			error: e instanceof Error ? e.message : "Download failed",
 		};
+		pushProgress(result, result.error ?? "Download failed");
+		return result;
 	}
 
-	const info = Updater.updateInfo();
-	if (!info) {
-		return { updateAvailable: false, updateReady: false };
+	const result = await readUpdateInfo();
+	const message = result.updateReady
+		? "Update ready to install"
+		: result.error || lastStatusMessage || "Download finished";
+	pushProgress(result, message);
+	return result;
+}
+
+export function initUpdaterNotifications(
+	onProgress: (state: UpdateDownloadState) => void,
+) {
+	progressListener = onProgress;
+
+	Updater.onStatusChange((entry) => {
+		lastStatusMessage = entry.message;
+		void readUpdateInfo().then((state) => {
+			pushProgress(state, entry.message);
+		});
+	});
+}
+
+export function isUpdateDownloading(): boolean {
+	return downloadTask !== null;
+}
+
+export async function getDownloadStatusForApp(): Promise<UpdateDownloadState> {
+	const state = await readUpdateInfo();
+	return {
+		...state,
+		downloading: downloadTask !== null,
+		statusMessage: lastStatusMessage || undefined,
+	};
+}
+
+export type BeginDownloadResult = {
+	started: boolean;
+	alreadyDownloading: boolean;
+	state: UpdateDownloadState;
+};
+
+export async function beginDownloadUpdateForApp(): Promise<BeginDownloadResult> {
+	const current = await getDownloadStatusForApp();
+
+	if (current.updateReady) {
+		return { started: false, alreadyDownloading: false, state: current };
 	}
 
-	if (!info.updateReady && info.updateAvailable && info.hash) {
-		const appDataFolder = await Updater.appDataFolder();
-		const ready = await waitForTarFile(appDataFolder, info.hash);
-		if (ready) {
-			info.updateReady = true;
-			info.error = "";
-		}
+	if (downloadTask) {
+		return {
+			started: false,
+			alreadyDownloading: true,
+			state: current,
+		};
 	}
 
-	return toUpdateInfo(info);
+	lastStatusMessage = "Starting download…";
+	pushProgress(current, lastStatusMessage);
+
+	downloadTask = runDownload().finally(() => {
+		downloadTask = null;
+	});
+
+	return {
+		started: true,
+		alreadyDownloading: false,
+		state: await getDownloadStatusForApp(),
+	};
 }
 
 export async function checkForUpdatesForApp(): Promise<UpdateInfo> {

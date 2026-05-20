@@ -8,10 +8,10 @@ import { HotkeyModal } from "./components/HotkeyModal";
 import { Toast } from "./components/Toast";
 import { Toolbar } from "./components/Toolbar";
 import { UpdateBanner } from "./components/UpdateBanner";
-import type { UpdateInfo } from "@shared/types";
 import { getRpc, setRpcHandlers } from "./rpc";
 import { applyAccentPreset } from "./theme/presets";
 import { useAppViewport } from "./hooks/useAppViewport";
+import { useUpdateDownload } from "./hooks/useUpdateDownload";
 import { eventToAccelerator } from "./utils/hotkey";
 
 type ToastState = { message: string; variant?: "info" | "error" } | null;
@@ -40,8 +40,6 @@ export default function App() {
 	);
 	const REORDER_THRESHOLD_PX = 8;
 	const [audioBlocked, setAudioBlocked] = useState(false);
-	const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
-	const [updateDownloading, setUpdateDownloading] = useState(false);
 	const stateRef = useRef<AppState | null>(null);
 
 	const showToast = useCallback((message: string, variant?: "info" | "error") => {
@@ -57,6 +55,15 @@ export default function App() {
 		}
 		await audioEngine.preloadAll(appState.board.clips);
 	}, []);
+
+	const {
+		updateInfo,
+		setUpdateInfo,
+		downloading: updateDownloading,
+		statusMessage: updateStatusMessage,
+		startDownload,
+		checkForUpdates,
+	} = useUpdateDownload(showToast);
 
 	const applyState = useCallback(
 		async (appState: AppState) => {
@@ -150,13 +157,8 @@ export default function App() {
 
 		void getRpc().request.getState({}).then(applyState).catch(console.error);
 
-		void getRpc()
-			.request.checkForUpdates({})
-			.then((info) => {
-				if (info.updateAvailable) setUpdateInfo(info);
-			})
-			.catch(console.error);
-	}, [applyState, playClip, showToast]);
+		void checkForUpdates();
+	}, [applyState, playClip, showToast, checkForUpdates]);
 
 	useEffect(() => {
 		const unlock = () => {
@@ -305,32 +307,8 @@ export default function App() {
 					version={updateInfo.version}
 					ready={updateInfo.updateReady}
 					downloading={updateDownloading}
-					onDownload={() => {
-						setUpdateDownloading(true);
-						void getRpc()
-							.request.downloadUpdate({})
-							.then((info) => {
-								setUpdateInfo(info);
-								if (!info.updateReady) {
-									const msg =
-										info.error ||
-										"Update is still downloading — try Download again in a moment.";
-									showToast(msg, "error");
-								}
-							})
-							.catch((err) => {
-								console.error(err);
-								const detail =
-									err instanceof Error ? err.message : String(err);
-								const msg = detail.includes("timed out")
-									? "Update download timed out — try Download again."
-									: detail
-										? `Update download failed: ${detail}`
-										: "Update download failed — try Download again.";
-								showToast(msg, "error");
-							})
-							.finally(() => setUpdateDownloading(false));
-					}}
+					statusMessage={updateStatusMessage}
+					onDownload={() => void startDownload()}
 					onApply={() => void getRpc().request.applyUpdate({})}
 					onDismiss={() => setUpdateInfo(null)}
 				/>

@@ -60,6 +60,17 @@ export type UpdateInfo = {
 	error?: string;
 };
 
+export type UpdateDownloadState = UpdateInfo & {
+	downloading: boolean;
+	statusMessage?: string;
+};
+
+export type BeginDownloadResult = {
+	started: boolean;
+	alreadyDownloading: boolean;
+	state: UpdateDownloadState;
+};
+
 export type SoundboardRPC = {
 	bun: RPCSchema<{
 		requests: {
@@ -94,7 +105,14 @@ export type SoundboardRPC = {
 			setAlwaysOnTop: { params: { enabled: boolean }; response: AppState };
 			readSoundFile: { params: { fileName: string }; response: number[] };
 			checkForUpdates: { params: Record<string, never>; response: UpdateInfo };
-			downloadUpdate: { params: Record<string, never>; response: UpdateInfo };
+			beginDownloadUpdate: {
+				params: Record<string, never>;
+				response: BeginDownloadResult;
+			};
+			getDownloadStatus: {
+				params: Record<string, never>;
+				response: UpdateDownloadState;
+			};
 			applyUpdate: { params: Record<string, never>; response: void };
 			saveWindowBounds: { params: WindowState; response: void };
 			playClipAudio: {
@@ -118,6 +136,7 @@ export type SoundboardRPC = {
 			hotkeyPlay: { id: string };
 			relayout: Record<string, never>;
 			playbackSnapshot: PlaybackSnapshot;
+			updateDownloadProgress: UpdateDownloadState;
 		};
 	}>;
 };

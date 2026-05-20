@@ -13,7 +13,12 @@ import {
 	saveSettings,
 } from "./config";
 import { syncHotkeys, unregisterAllHotkeys, validateHotkey } from "./hotkeys";
-import { checkForUpdatesForApp, downloadUpdateForApp } from "./updater";
+import {
+	beginDownloadUpdateForApp,
+	checkForUpdatesForApp,
+	getDownloadStatusForApp,
+	initUpdaterNotifications,
+} from "./updater";
 import { playClipOnHost, stopAllOnHost, stopClipOnHost } from "./host-playback";
 import { applyBundledWindowIcon, scheduleBundledWindowIcon } from "./win-icon";
 import { notifyState, sendToWebview } from "./webview-messages";
@@ -38,8 +43,7 @@ async function getMainViewUrl(): Promise<string> {
 let mainWindow: BrowserWindow;
 
 const rpc = BrowserView.defineRPC<SoundboardRPC>({
-	// Full update downloads can exceed 30s on slow links (first click was timing out).
-	maxRequestTime: 600_000,
+	maxRequestTime: 120_000,
 	handlers: {
 		requests: {
 			getState: async () => loadAppState(),
@@ -127,7 +131,8 @@ const rpc = BrowserView.defineRPC<SoundboardRPC>({
 			},
 			readSoundFile: async ({ fileName }) => boardOps.readSoundBytes(fileName),
 			checkForUpdates: async () => checkForUpdatesForApp(),
-			downloadUpdate: async () => downloadUpdateForApp(),
+			beginDownloadUpdate: async () => beginDownloadUpdateForApp(),
+			getDownloadStatus: async () => getDownloadStatusForApp(),
 			applyUpdate: async () => {
 				if (Updater.updateInfo()?.updateReady) {
 					await Updater.applyUpdate();
@@ -176,6 +181,10 @@ mainWindow = new BrowserWindow({
 });
 
 mainWindow.setAlwaysOnTop(settings.alwaysOnTop);
+
+initUpdaterNotifications((state) => {
+	sendToWebview(mainWindow, "updateDownloadProgress", state);
+});
 
 void applyBundledWindowIcon(mainWindow);
 scheduleBundledWindowIcon(mainWindow);
