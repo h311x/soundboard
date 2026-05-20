@@ -109,6 +109,7 @@ export function Toolbar({
 							step={0.01}
 							value={master.display}
 							onInput={(e) => master.onInput(Number(e.currentTarget.value))}
+							onChange={(e) => master.onInput(Number(e.currentTarget.value))}
 							onPointerDown={master.onPointerDown}
 							onPointerUp={master.commit}
 							onPointerCancel={master.commit}

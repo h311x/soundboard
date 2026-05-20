@@ -156,6 +156,7 @@ export function ClipPad({
 						step={0.01}
 						value={volume.display}
 						onInput={(e) => volume.onInput(Number(e.currentTarget.value))}
+						onChange={(e) => volume.onInput(Number(e.currentTarget.value))}
 						onPointerUp={volume.commit}
 						onPointerCancel={volume.commit}
 						onKeyUp={volume.commit}

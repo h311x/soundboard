@@ -19,9 +19,16 @@ import {
 	getDownloadStatusForApp,
 	initUpdaterNotifications,
 } from "./updater";
-import { playClipOnHost, stopAllOnHost, stopClipOnHost } from "./host-playback";
+import {
+	playClipOnHost,
+	previewClipVolumeOnHost,
+	previewMasterVolumeOnHost,
+	stopAllOnHost,
+	stopClipOnHost,
+} from "./host-playback";
 import { applyBundledWindowIcon, scheduleBundledWindowIcon } from "./win-icon";
 import { notifyState, sendToWebview } from "./webview-messages";
+import { refreshWebviewLayout } from "./webview-layout";
 
 const DEV_SERVER_PORT = 5173;
 const DEV_SERVER_URL = `http://localhost:${DEV_SERVER_PORT}`;
@@ -93,10 +100,16 @@ const rpc = BrowserView.defineRPC<SoundboardRPC>({
 				notifyState(mainWindow, state);
 				return state;
 			},
+			previewClipVolume: async ({ id, volume }) => {
+				await previewClipVolumeOnHost(id, volume);
+			},
 			setMasterVolume: async ({ volume }) => {
 				const state = await boardOps.setMasterVolume(volume);
 				notifyState(mainWindow, state);
 				return state;
+			},
+			previewMasterVolume: async ({ volume }) => {
+				await previewMasterVolumeOnHost(volume);
 			},
 			setClipHotkey: async ({ id, hotkey }) => {
 				const board = (await loadAppState()).board;
@@ -190,12 +203,6 @@ void applyBundledWindowIcon(mainWindow);
 scheduleBundledWindowIcon(mainWindow);
 
 let saveBoundsTimer: ReturnType<typeof setTimeout> | null = null;
-let relayoutTimer: ReturnType<typeof setTimeout> | null = null;
-
-function refreshNativeFrame() {
-	const frame = mainWindow.getFrame();
-	mainWindow.setFrame(frame.x, frame.y, frame.width, frame.height);
-}
 
 function scheduleSaveBounds() {
 	if (saveBoundsTimer) clearTimeout(saveBoundsTimer);
@@ -214,24 +221,8 @@ function scheduleSaveBounds() {
 	}, 400);
 }
 
-function notifyWebviewRelayout() {
-	if (relayoutTimer) clearTimeout(relayoutTimer);
-	relayoutTimer = setTimeout(() => {
-		refreshNativeFrame();
-		sendToWebview(mainWindow, "relayout", {});
-	}, 50);
-}
-
-function notifyWebviewRelayoutBurst() {
-	notifyWebviewRelayout();
-	for (const ms of [150, 400]) {
-		setTimeout(() => sendToWebview(mainWindow, "relayout", {}), ms);
-	}
-}
-
 mainWindow.on("resize", () => {
 	scheduleSaveBounds();
-	notifyWebviewRelayout();
 	void applyBundledWindowIcon(mainWindow);
 });
 mainWindow.on("move", scheduleSaveBounds);
@@ -255,8 +246,7 @@ await syncHotkeys(mainWindow);
 mainWindow.webview.on("dom-ready", async () => {
 	await applyBundledWindowIcon(mainWindow);
 	scheduleBundledWindowIcon(mainWindow);
-	refreshNativeFrame();
-	notifyWebviewRelayoutBurst();
+	refreshWebviewLayout(mainWindow);
 
 	const state = await loadAppState();
 	notifyState(mainWindow, state);

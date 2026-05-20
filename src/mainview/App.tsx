@@ -10,14 +10,12 @@ import { Toolbar } from "./components/Toolbar";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { getRpc, setRpcHandlers } from "./rpc";
 import { applyAccentPreset } from "./theme/presets";
-import { useAppViewport } from "./hooks/useAppViewport";
 import { useUpdateDownload } from "./hooks/useUpdateDownload";
 import { eventToAccelerator } from "./utils/hotkey";
 
 type ToastState = { message: string; variant?: "info" | "error" } | null;
 
 export default function App() {
-	useAppViewport();
 	const [state, setState] = useState<AppState | null>(null);
 	const [toast, setToast] = useState<ToastState>(null);
 	const [editClip, setEditClip] = useState<Clip | null>(null);
@@ -285,8 +283,9 @@ export default function App() {
 					audioEngine.stopAll();
 				}}
 				onMasterVolumePreview={(v) => {
-					if (!state?.capabilities.hostAudio) {
-						audioEngine.setMasterVolume(v);
+					audioEngine.setMasterVolume(v);
+					if (state?.capabilities.hostAudio) {
+						void getRpc().request.previewMasterVolume({ volume: v });
 					}
 				}}
 				onMasterVolumeCommit={(v) =>
@@ -368,8 +367,12 @@ export default function App() {
 								onEdit={() => setEditClip(clip)}
 								onEditHotkey={() => setHotkeyClip(clip)}
 								onVolumePreview={(v) => {
-									if (!state?.capabilities.hostAudio) {
-										audioEngine.setClipVolume(clip.id, v);
+									audioEngine.setClipVolume(clip.id, v);
+									if (state?.capabilities.hostAudio) {
+										void getRpc().request.previewClipVolume({
+											id: clip.id,
+											volume: v,
+										});
 									}
 								}}
 								onVolumeCommit={(v) =>

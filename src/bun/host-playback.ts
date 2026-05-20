@@ -121,6 +121,33 @@ export async function stopAllOnHost(win: BrowserWindow) {
 	emitSnapshot(win);
 }
 
+export async function previewClipVolumeOnHost(
+	clipId: string,
+	clipVolume: number,
+): Promise<void> {
+	if (process.platform !== "win32") return;
+	const state = await loadAppState();
+	const effective = clipVolume * state.board.masterVolume;
+	const audio = await winAudio();
+	for (const play of plays) {
+		if (play.clipId !== clipId) continue;
+		audio.setAliasVolume(play.alias, effective);
+	}
+}
+
+export async function previewMasterVolumeOnHost(
+	masterVolume: number,
+): Promise<void> {
+	if (process.platform !== "win32") return;
+	const state = await loadAppState();
+	const audio = await winAudio();
+	for (const play of plays) {
+		const clip = state.board.clips.find((c) => c.id === play.clipId);
+		if (!clip) continue;
+		audio.setAliasVolume(play.alias, clip.volume * masterVolume);
+	}
+}
+
 export async function stopClipOnHost(win: BrowserWindow, clipId: string) {
 	if (process.platform !== "win32") return;
 	const audio = await winAudio();

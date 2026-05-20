@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type PointerEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
 
 /** Local slider value while dragging; persist only on commit. */
 export function useSliderCommit(
@@ -7,14 +7,18 @@ export function useSliderCommit(
 	onCommit: (v: number) => void,
 ) {
 	const [local, setLocal] = useState<number | null>(null);
+	const draggingRef = useRef(false);
 	const display = local ?? value;
 
+	// Clear local only after persisted value catches up (avoids thumb jumping on commit).
 	useEffect(() => {
-		setLocal(null);
-	}, [value]);
+		if (draggingRef.current || local === null) return;
+		if (Math.abs(value - local) < 0.005) setLocal(null);
+	}, [value, local]);
 
 	const onInput = useCallback(
 		(next: number) => {
+			draggingRef.current = true;
 			setLocal(next);
 			onPreview(next);
 		},
@@ -22,9 +26,9 @@ export function useSliderCommit(
 	);
 
 	const commit = useCallback(() => {
+		draggingRef.current = false;
 		if (local === null) return;
 		onCommit(local);
-		setLocal(null);
 	}, [local, onCommit]);
 
 	/** Stop Electrobun window-drag from stealing pointer events (Windows toolbar). */

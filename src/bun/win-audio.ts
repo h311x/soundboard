@@ -103,6 +103,11 @@ export function playFile(
 	return { alias, durationMs };
 }
 
+export function setAliasVolume(alias: string, volume: number): void {
+	const vol = Math.max(0, Math.min(1000, Math.round(volume * 1000)));
+	mci(`setaudio ${alias} volume to ${vol}`);
+}
+
 export function stopClip(clipId: string): void {
 	for (const entry of [...active]) {
 		if (entry.clipId !== clipId) continue;

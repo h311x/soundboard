@@ -93,7 +93,12 @@ export type SoundboardRPC = {
 				params: { id: string; volume: number };
 				response: AppState;
 			};
+			previewClipVolume: {
+				params: { id: string; volume: number };
+				response: void;
+			};
 			setMasterVolume: { params: { volume: number }; response: AppState };
+			previewMasterVolume: { params: { volume: number }; response: void };
 			setClipHotkey: {
 				params: { id: string; hotkey: string };
 				response: { ok: boolean; error?: string; state: AppState };
@@ -134,7 +139,6 @@ export type SoundboardRPC = {
 			stateChanged: { state: AppState };
 			showToast: { message: string; variant?: "info" | "error" };
 			hotkeyPlay: { id: string };
-			relayout: Record<string, never>;
 			playbackSnapshot: PlaybackSnapshot;
 			updateDownloadProgress: UpdateDownloadState;
 		};

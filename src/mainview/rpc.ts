@@ -21,7 +21,6 @@ let handlers: RpcHandlers = {
 	onShowToast: () => {},
 };
 
-let onRelayout = () => {};
 let onUpdateDownload: ((state: UpdateDownloadState) => void) | null = null;
 
 export function setUpdateDownloadHandler(
@@ -32,10 +31,6 @@ export function setUpdateDownloadHandler(
 
 export function setRpcHandlers(next: RpcHandlers) {
 	handlers = next;
-}
-
-export function setRelayoutHandler(fn: () => void) {
-	onRelayout = fn;
 }
 
 /** Status polls are fast; download runs in Bun without blocking RPC. */
@@ -53,7 +48,6 @@ export const electroview = new Electroview({
 				showToast: ({ message, variant }) =>
 					handlers.onShowToast(message, variant),
 				hotkeyPlay: ({ id }) => handlers.onPlayClip(id),
-				relayout: () => onRelayout(),
 				playbackSnapshot: (payload: PlaybackSnapshot) =>
 					setHostPlaybackSnapshot(payload),
 				updateDownloadProgress: (payload) => onUpdateDownload?.(payload),
