@@ -1,5 +1,5 @@
 import type { Clip } from "@shared/types";
-import { useCallback, useEffect, useRef } from "react";
+import { useSliderCommit } from "../hooks/useSliderCommit";
 import { formatHotkeyDisplay } from "../utils/hotkey";
 
 /** Elements that must never initiate card reorder drag (WebKit ignores dragstart preventDefault on range inputs). */
@@ -18,16 +18,10 @@ type Props = {
 	onStop: () => void;
 	onEdit: () => void;
 	onEditHotkey: () => void;
-	onVolumeChange: (v: number) => void;
-	dragProps?: {
-		draggable: boolean;
-		onDragStart: (e: React.DragEvent) => void;
-		onDragOver: (e: React.DragEvent) => void;
-		onDrop: (e: React.DragEvent) => void;
-		onDragEnd: () => void;
-		dragging: boolean;
-		dragOver: boolean;
-	};
+	onVolumePreview: (v: number) => void;
+	onVolumeCommit: (v: number) => void;
+	reorderState?: { dragging: boolean; dragOver: boolean };
+	onReorderPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
 };
 
 export function ClipPad({
@@ -38,55 +32,17 @@ export function ClipPad({
 	onStop,
 	onEdit,
 	onEditHotkey,
-	onVolumeChange,
-	dragProps,
+	onVolumePreview,
+	onVolumeCommit,
+	reorderState,
+	onReorderPointerDown,
 }: Props) {
 	const hasHotkey = Boolean(clip.hotkey);
-	const padRef = useRef<HTMLDivElement>(null);
-	const canReorder = dragProps?.draggable ?? false;
-
-	const disablePadDrag = useCallback(() => {
-		if (padRef.current) padRef.current.draggable = false;
-	}, []);
+	const volume = useSliderCommit(clip.volume, onVolumePreview, onVolumeCommit);
 
 	const handlePadPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-		if (!canReorder) return;
-		if (pointerBlocksCardDrag(e.target as HTMLElement)) {
-			disablePadDrag();
-			return;
-		}
-		if (padRef.current) padRef.current.draggable = true;
-	};
-
-	useEffect(() => {
-		disablePadDrag();
-	}, [disablePadDrag, canReorder]);
-
-	useEffect(() => {
-		if (!canReorder) return;
-		const restore = () => disablePadDrag();
-		window.addEventListener("pointerup", restore);
-		window.addEventListener("pointercancel", restore);
-		return () => {
-			window.removeEventListener("pointerup", restore);
-			window.removeEventListener("pointercancel", restore);
-		};
-	}, [canReorder, disablePadDrag]);
-
-	const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
-		if (pointerBlocksCardDrag(e.target as HTMLElement)) {
-			e.preventDefault();
-			disablePadDrag();
-			return;
-		}
-		e.dataTransfer.effectAllowed = "move";
-		e.dataTransfer.setData("text/plain", clip.id);
-		dragProps?.onDragStart(e);
-	};
-
-	const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
-		disablePadDrag();
-		dragProps?.onDragEnd();
+		if (pointerBlocksCardDrag(e.target as HTMLElement)) return;
+		onReorderPointerDown?.(e);
 	};
 
 	const isNestedAction = (el: HTMLElement, zone: HTMLElement) => {
@@ -110,14 +66,9 @@ export function ClipPad({
 
 	return (
 		<div
-			ref={padRef}
-			className={`clip-pad glass-panel ${isPlaying ? "playing" : ""} ${progress >= 1 ? "played" : ""} ${clip.missing ? "missing" : ""} ${dragProps?.dragging ? "dragging" : ""} ${dragProps?.dragOver ? "drag-over" : ""}`}
-			draggable={false}
+			data-clip-id={clip.id}
+			className={`clip-pad glass-panel ${isPlaying ? "playing" : ""} ${progress >= 1 ? "played" : ""} ${clip.missing ? "missing" : ""} ${reorderState?.dragging ? "dragging" : ""} ${reorderState?.dragOver ? "drag-over" : ""}`}
 			onPointerDown={handlePadPointerDown}
-			onDragStart={handleDragStart}
-			onDragEnd={handleDragEnd}
-			onDragOver={dragProps?.onDragOver}
-			onDrop={dragProps?.onDrop}
 		>
 			<div
 				className="clip-play-zone"
@@ -192,10 +143,7 @@ export function ClipPad({
 				/>
 			</div>
 
-			<div
-				className="clip-footer clip-no-drag"
-				onPointerDownCapture={disablePadDrag}
-			>
+			<div className="clip-footer clip-no-drag">
 				<label
 					className="clip-volume"
 					onPointerDownCapture={(e) => e.stopPropagation()}
@@ -206,13 +154,13 @@ export function ClipPad({
 						min={0}
 						max={1}
 						step={0.01}
-						value={clip.volume}
-						onChange={(e) => onVolumeChange(Number(e.target.value))}
+						value={volume.display}
+						onInput={(e) => volume.onInput(Number(e.currentTarget.value))}
+						onPointerUp={volume.commit}
+						onPointerCancel={volume.commit}
+						onKeyUp={volume.commit}
 						className="clip-slider"
-						onPointerDownCapture={(e) => {
-							e.stopPropagation();
-							disablePadDrag();
-						}}
+						onPointerDownCapture={(e) => e.stopPropagation()}
 						onClick={(e) => e.stopPropagation()}
 					/>
 				</label>

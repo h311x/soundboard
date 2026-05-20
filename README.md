@@ -59,9 +59,27 @@ git push origin v0.1.0
 3. GitHub Actions builds all platforms and publishes assets to the Release.
 4. Installed apps on the **stable** channel pick up updates automatically (in-app banner + restart).
 
-### macOS unsigned builds
+### macOS install (unsigned builds)
 
-v1 builds may be unsigned. On first launch: right-click the app → **Open**, or allow in **System Settings → Privacy & Security**.
+Release builds are **not code-signed**. After downloading from GitHub, macOS may say the app is **“damaged”** — that is Gatekeeper, not a corrupt file.
+
+**Option A — Remove quarantine (recommended)**
+
+```bash
+xattr -cr /path/to/Soundboard.app
+```
+
+Then open normally (double-click or from Applications).
+
+**Option B — First open via right-click**
+
+Right-click `Soundboard.app` → **Open** → confirm **Open** in the dialog. You only need to do this once.
+
+**Option C — System Settings**
+
+If macOS still blocks it: **System Settings → Privacy & Security** → **Open Anyway** (shown after a blocked launch attempt).
+
+Download `stable-macos-arm64-Soundboard.dmg` or extract the `.tar.zst` (e.g. double-click, or `tar -xf` in Terminal).
 
 ### Apple code signing (optional)
 

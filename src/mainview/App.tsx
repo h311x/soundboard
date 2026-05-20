@@ -27,6 +27,10 @@ export default function App() {
 	const [showThemePicker, setShowThemePicker] = useState(false);
 	const [dragId, setDragId] = useState<string | null>(null);
 	const [dragOverId, setDragOverId] = useState<string | null>(null);
+	const reorderStartRef = useRef<{ id: string; x: number; y: number } | null>(
+		null,
+	);
+	const REORDER_THRESHOLD_PX = 8;
 	const [audioBlocked, setAudioBlocked] = useState(false);
 	const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
 	const [updateDownloading, setUpdateDownloading] = useState(false);
@@ -167,9 +171,10 @@ export default function App() {
 		}
 	};
 
-	const reorder = async (fromId: string, toId: string) => {
-		if (!state || fromId === toId) return;
-		const ids = state.board.clips.map((c) => c.id);
+	const reorder = useCallback(async (fromId: string, toId: string) => {
+		const current = stateRef.current;
+		if (!current || fromId === toId) return;
+		const ids = current.board.clips.map((c) => c.id);
 		const fromIdx = ids.indexOf(fromId);
 		const toIdx = ids.indexOf(toId);
 		if (fromIdx < 0 || toIdx < 0) return;
@@ -177,7 +182,54 @@ export default function App() {
 		ids.splice(toIdx, 0, fromId);
 		const s = await getRpc().request.reorderClips({ ids });
 		await applyState(s);
-	};
+	}, [applyState]);
+
+	const dragActiveRef = useRef<string | null>(null);
+	const dragOverRef = useRef<string | null>(null);
+
+	useEffect(() => {
+		const onMove = (e: PointerEvent) => {
+			const start = reorderStartRef.current;
+			if (!start) return;
+			const dx = e.clientX - start.x;
+			const dy = e.clientY - start.y;
+			if (
+				!dragActiveRef.current &&
+				dx * dx + dy * dy >= REORDER_THRESHOLD_PX * REORDER_THRESHOLD_PX
+			) {
+				dragActiveRef.current = start.id;
+				setDragId(start.id);
+			}
+			if (!dragActiveRef.current) return;
+			const el = document.elementFromPoint(e.clientX, e.clientY);
+			const card = el?.closest("[data-clip-id]");
+			const overId = card?.getAttribute("data-clip-id");
+			if (overId && overId !== dragActiveRef.current) {
+				dragOverRef.current = overId;
+				setDragOverId(overId);
+			}
+		};
+
+		const finishReorder = () => {
+			const from = dragActiveRef.current;
+			const to = dragOverRef.current;
+			if (from && to && from !== to) void reorder(from, to);
+			reorderStartRef.current = null;
+			dragActiveRef.current = null;
+			dragOverRef.current = null;
+			setDragId(null);
+			setDragOverId(null);
+		};
+
+		window.addEventListener("pointermove", onMove);
+		window.addEventListener("pointerup", finishReorder);
+		window.addEventListener("pointercancel", finishReorder);
+		return () => {
+			window.removeEventListener("pointermove", onMove);
+			window.removeEventListener("pointerup", finishReorder);
+			window.removeEventListener("pointercancel", finishReorder);
+		};
+	}, [reorder]);
 
 	if (!state) {
 		return (
@@ -204,7 +256,8 @@ export default function App() {
 				accentPreset={state.settings.accentPreset}
 				onImport={() => void getRpc().request.importViaDialog({}).then(applyState)}
 				onStopAll={() => audioEngine.stopAll()}
-				onMasterVolume={(v) =>
+				onMasterVolumePreview={(v) => audioEngine.setMasterVolume(v)}
+				onMasterVolumeCommit={(v) =>
 					void getRpc().request.setMasterVolume({ volume: v }).then(applyState)
 				}
 				onAlwaysOnTop={(enabled) =>
@@ -284,30 +337,22 @@ export default function App() {
 								onStop={() => audioEngine.stopClip(clip.id)}
 								onEdit={() => setEditClip(clip)}
 								onEditHotkey={() => setHotkeyClip(clip)}
-								onVolumeChange={(v) =>
+								onVolumePreview={(v) => audioEngine.setClipVolume(clip.id, v)}
+								onVolumeCommit={(v) =>
 									void getRpc().request
 										.setClipVolume({ id: clip.id, volume: v })
 										.then(applyState)
 								}
-								dragProps={{
-									draggable: true,
+								reorderState={{
 									dragging: dragId === clip.id,
 									dragOver: dragOverId === clip.id,
-									onDragStart: () => setDragId(clip.id),
-									onDragOver: (e) => {
-										e.preventDefault();
-										setDragOverId(clip.id);
-									},
-									onDrop: (e) => {
-										e.preventDefault();
-										if (dragId) void reorder(dragId, clip.id);
-										setDragId(null);
-										setDragOverId(null);
-									},
-									onDragEnd: () => {
-										setDragId(null);
-										setDragOverId(null);
-									},
+								}}
+								onReorderPointerDown={(e) => {
+									reorderStartRef.current = {
+										id: clip.id,
+										x: e.clientX,
+										y: e.clientY,
+									};
 								}}
 							/>
 						))}

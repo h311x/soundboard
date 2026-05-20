@@ -7,6 +7,7 @@ import {
 	saveBoard,
 	soundFilePath,
 	validateClips,
+	withBoardLock,
 } from "./config";
 
 const ALLOWED_EXT = new Set([".mp3", ".wav", ".ogg", ".m4a", ".aac", ".webm"]);
@@ -36,6 +37,7 @@ async function copyToSounds(sourcePath: string): Promise<{
 }
 
 export async function importPaths(paths: string[]): Promise<AppState> {
+	return withBoardLock(async () => {
 	const board = await loadBoard();
 	for (const path of paths) {
 		try {
@@ -55,11 +57,13 @@ export async function importPaths(paths: string[]): Promise<AppState> {
 	await saveBoard(board);
 	await validateClips(board);
 	return loadAppState();
+	});
 }
 
 export async function importFileData(
 	files: { name: string; data: number[] }[],
 ): Promise<AppState> {
+	return withBoardLock(async () => {
 	const board = await loadBoard();
 	for (const file of files) {
 		const ext = extname(file.name).toLowerCase();
@@ -79,20 +83,24 @@ export async function importFileData(
 	await saveBoard(board);
 	await validateClips(board);
 	return loadAppState();
+	});
 }
 
 export async function renameClip(
 	id: string,
 	displayName: string,
 ): Promise<AppState> {
+	return withBoardLock(async () => {
 	const board = await loadBoard();
 	const clip = board.clips.find((c) => c.id === id);
 	if (clip) clip.displayName = displayName.trim() || clip.displayName;
 	await saveBoard(board);
 	return loadAppState();
+	});
 }
 
 export async function deleteClip(id: string): Promise<AppState> {
+	return withBoardLock(async () => {
 	const board = await loadBoard();
 	const clip = board.clips.find((c) => c.id === id);
 	if (clip) {
@@ -105,9 +113,11 @@ export async function deleteClip(id: string): Promise<AppState> {
 	}
 	await saveBoard(board);
 	return loadAppState();
+	});
 }
 
 export async function reorderClips(ids: string[]): Promise<AppState> {
+	return withBoardLock(async () => {
 	const board = await loadBoard();
 	const byId = new Map(board.clips.map((c) => [c.id, c]));
 	const reordered: Clip[] = [];
@@ -121,24 +131,29 @@ export async function reorderClips(ids: string[]): Promise<AppState> {
 	board.clips = reordered;
 	await saveBoard(board);
 	return loadAppState();
+	});
 }
 
 export async function setClipVolume(
 	id: string,
 	volume: number,
 ): Promise<AppState> {
+	return withBoardLock(async () => {
 	const board = await loadBoard();
 	const clip = board.clips.find((c) => c.id === id);
 	if (clip) clip.volume = Math.max(0, Math.min(1, volume));
 	await saveBoard(board);
 	return loadAppState();
+	});
 }
 
 export async function setMasterVolume(volume: number): Promise<AppState> {
+	return withBoardLock(async () => {
 	const board = await loadBoard();
 	board.masterVolume = Math.max(0, Math.min(1, volume));
 	await saveBoard(board);
 	return loadAppState();
+	});
 }
 
 export async function readSoundBytes(fileName: string): Promise<number[]> {
@@ -151,9 +166,11 @@ export async function readSoundBytes(fileName: string): Promise<number[]> {
 export async function updateBoard(
 	mutate: (board: BoardData) => void,
 ): Promise<AppState> {
+	return withBoardLock(async () => {
 	const board = await loadBoard();
 	mutate(board);
 	await saveBoard(board);
 	await validateClips(board);
 	return loadAppState();
+	});
 }

@@ -1,6 +1,6 @@
 import { Utils } from "electrobun/bun";
-import { mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, readdir, rename } from "node:fs/promises";
+import { basename, extname, join } from "node:path";
 import type {
 	AccentPresetId,
 	AppState,
@@ -13,6 +13,8 @@ const SETTINGS_FILE = "settings.json";
 const SOUNDS_DIR = "sounds";
 
 const DEFAULT_WINDOW = { x: 100, y: 100, width: 520, height: 680 };
+
+const SOUND_EXT = new Set([".mp3", ".wav", ".ogg", ".m4a", ".aac", ".webm"]);
 
 const DEFAULT_BOARD: BoardData = {
 	version: 1,
@@ -50,7 +52,21 @@ async function readJson<T>(path: string, fallback: T): Promise<T> {
 }
 
 async function writeJson(path: string, data: unknown): Promise<void> {
-	await Bun.write(path, JSON.stringify(data, null, 2));
+	const tmp = `${path}.tmp`;
+	await Bun.write(tmp, JSON.stringify(data, null, 2));
+	await rename(tmp, path);
+}
+
+let boardMutation: Promise<void> = Promise.resolve();
+
+/** Serialize board read-modify-write to avoid races from rapid slider updates. */
+export function withBoardLock<T>(fn: () => Promise<T>): Promise<T> {
+	const run = boardMutation.then(fn);
+	boardMutation = run.then(
+		() => undefined,
+		() => undefined,
+	);
+	return run;
 }
 
 function migrateBoard(board: BoardData): BoardData {
@@ -73,9 +89,39 @@ function migrateSettings(settings: Partial<SettingsData>): SettingsData {
 	};
 }
 
+async function recoverClipsFromSounds(board: BoardData): Promise<void> {
+	if (board.clips.length > 0) return;
+	await ensureDirs();
+	let entries: string[];
+	try {
+		entries = await readdir(getSoundsDir());
+	} catch {
+		return;
+	}
+	for (const fileName of entries) {
+		const ext = extname(fileName).toLowerCase();
+		if (!SOUND_EXT.has(ext)) continue;
+		board.clips.push({
+			id: crypto.randomUUID(),
+			displayName: basename(fileName, ext) || fileName,
+			fileName,
+			hotkey: "",
+			volume: 1,
+			color: null,
+		});
+	}
+	if (board.clips.length > 0) {
+		console.warn(
+			`Recovered ${board.clips.length} clip(s) from sounds folder (board was empty)`,
+		);
+		await saveBoard(board);
+	}
+}
+
 export async function loadBoard(): Promise<BoardData> {
 	const path = join(getUserDataDir(), BOARD_FILE);
 	const board = migrateBoard(await readJson(path, DEFAULT_BOARD));
+	await recoverClipsFromSounds(board);
 	await validateClips(board);
 	return board;
 }

@@ -1,6 +1,7 @@
 import type { AccentPresetId } from "@shared/types";
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useSliderCommit } from "../hooks/useSliderCommit";
 import { ThemePicker } from "./ThemePicker";
 
 type Props = {
@@ -9,7 +10,8 @@ type Props = {
 	showThemePicker: boolean;
 	onImport: () => void;
 	onStopAll: () => void;
-	onMasterVolume: (v: number) => void;
+	onMasterVolumePreview: (v: number) => void;
+	onMasterVolumeCommit: (v: number) => void;
 	onAlwaysOnTop: (v: boolean) => void;
 	onAccent: (preset: AccentPresetId) => void;
 	onToggleTheme: () => void;
@@ -23,7 +25,8 @@ export function Toolbar({
 	showThemePicker,
 	onImport,
 	onStopAll,
-	onMasterVolume,
+	onMasterVolumePreview,
+	onMasterVolumeCommit,
 	onAlwaysOnTop,
 	onAccent,
 	onToggleTheme,
@@ -32,6 +35,11 @@ export function Toolbar({
 }: Props) {
 	const themeAnchorRef = useRef<HTMLButtonElement>(null);
 	const popoverRef = useRef<HTMLDivElement>(null);
+	const master = useSliderCommit(
+		masterVolume,
+		onMasterVolumePreview,
+		onMasterVolumeCommit,
+	);
 
 	useEffect(() => {
 		if (!showThemePicker) return;
@@ -99,8 +107,11 @@ export function Toolbar({
 							min={0}
 							max={1}
 							step={0.01}
-							value={masterVolume}
-							onChange={(e) => onMasterVolume(Number(e.target.value))}
+							value={master.display}
+							onInput={(e) => master.onInput(Number(e.currentTarget.value))}
+							onPointerUp={master.commit}
+							onPointerCancel={master.commit}
+							onKeyUp={master.commit}
 							className="glass-slider"
 						/>
 					</label>
