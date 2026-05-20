@@ -118,6 +118,10 @@ After building on Windows, `scripts/patch-win-metadata.ts` re-embeds the app ico
 
 If the taskbar icon is still stale after updating: unpin Soundboard, quit the app, relaunch from the updated install folder, then pin again (Windows icon cache).
 
+### Windows window chrome
+
+Soundboard uses the **native Windows title bar** (minimize, maximize, close, resize). Electrobun/WebView2 does not expose deep DWM/title-bar theming; customization is mainly the **app icon** and **window title** (“Soundboard”). The in-app toolbar is not a drag region on Windows so volume sliders work correctly.
+
 ## Data
 
 User data is stored under Electrobun’s app data directory:

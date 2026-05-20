@@ -160,7 +160,6 @@ const settings = await loadSettings();
 const url = await getMainViewUrl();
 const isMac = process.platform === "darwin";
 const isLinux = process.platform === "linux";
-const isWin = process.platform === "win32";
 
 mainWindow = new BrowserWindow({
 	title: "Soundboard",
@@ -169,7 +168,9 @@ mainWindow = new BrowserWindow({
 	frame: {
 		...settings.window,
 	},
-	titleBarStyle: isMac ? "hiddenInset" : isWin ? "hidden" : "default",
+	// Windows: native frame (resize + system caption buttons). Custom frameless chrome
+	// cannot replace DWM resize borders in Electrobun; toolbar stays no-drag for sliders.
+	titleBarStyle: isMac ? "hiddenInset" : "default",
 	transparent: isMac,
 	renderer: isLinux ? "cef" : "native",
 });

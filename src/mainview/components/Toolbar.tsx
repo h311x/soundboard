@@ -2,7 +2,6 @@ import type { AccentPresetId } from "@shared/types";
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useSliderCommit } from "../hooks/useSliderCommit";
-import { getRpc } from "../rpc";
 import { ThemePicker } from "./ThemePicker";
 
 type Props = {
@@ -19,10 +18,6 @@ type Props = {
 	onCloseTheme: () => void;
 	accentPreset: AccentPresetId;
 };
-
-const isWindows =
-	typeof document !== "undefined" &&
-	document.documentElement.dataset.platform === "windows";
 
 export function Toolbar({
 	masterVolume,
@@ -88,32 +83,10 @@ export function Toolbar({
 	return (
 		<>
 			<div
-				className={`titlebar electrobun-webkit-app-region-drag ${isWindows ? "titlebar--windows" : ""}`}
+				className="titlebar electrobun-webkit-app-region-drag"
 				title="Drag to move window"
 			>
 				<h1 className="app-title">Soundboard</h1>
-				{isWindows && (
-					<div className="win-window-controls electrobun-webkit-app-region-no-drag">
-						<button
-							type="button"
-							className="win-chrome-btn"
-							title="Minimize"
-							aria-label="Minimize"
-							onClick={() => void getRpc().request.minimizeWindow({})}
-						>
-							<span aria-hidden>−</span>
-						</button>
-						<button
-							type="button"
-							className="win-chrome-btn win-chrome-btn--close"
-							title="Close"
-							aria-label="Close"
-							onClick={() => void getRpc().request.closeWindow({})}
-						>
-							<span aria-hidden>×</span>
-						</button>
-					</div>
-				)}
 			</div>
 
 			<header className="toolbar electrobun-webkit-app-region-no-drag">
