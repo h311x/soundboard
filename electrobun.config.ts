@@ -4,7 +4,7 @@ export default {
 	app: {
 		name: "Soundboard",
 		identifier: "com.h311x.soundboard",
-		version: "0.1.9",
+		version: "0.1.10",
 	},
 	runtime: {
 		exitOnLastWindowClosed: true,
