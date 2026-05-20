@@ -2,34 +2,25 @@ import { useEffect } from "react";
 import { setRelayoutHandler } from "../rpc";
 
 /**
- * WebView2 often reports a viewport larger than the visible client area (content
- * clipped on the right and bottom). Use the smallest trusted dimension metric.
+ * WebView2 can report a layout viewport larger than the painted area (clip right/bottom).
+ * Scale the shell down when inner size is smaller than the layout client size.
  */
-function readViewportSize(): { width: number; height: number } {
-	const root = document.documentElement;
-	const vv = window.visualViewport;
-	const candidatesW = [
-		root.clientWidth,
-		window.innerWidth,
-		vv?.width ?? Number.POSITIVE_INFINITY,
-	].filter((n) => n > 0);
-	const candidatesH = [
-		root.clientHeight,
-		window.innerHeight,
-		vv?.height ?? Number.POSITIVE_INFINITY,
-	].filter((n) => n > 0);
-
-	return {
-		width: Math.floor(Math.min(...candidatesW)),
-		height: Math.floor(Math.min(...candidatesH)),
-	};
-}
-
 function syncViewportSize() {
-	const { width, height } = readViewportSize();
 	const root = document.documentElement;
-	if (width > 0) root.style.setProperty("--app-width", `${width}px`);
-	if (height > 0) root.style.setProperty("--app-height", `${height}px`);
+	const clientW = root.clientWidth;
+	const clientH = root.clientHeight;
+	const innerW = window.innerWidth;
+	const innerH = window.innerHeight;
+
+	let scale = 1;
+	if (clientW > 0 && innerW > 0) scale = Math.min(scale, innerW / clientW);
+	if (clientH > 0 && innerH > 0) scale = Math.min(scale, innerH / clientH);
+
+	if (scale < 0.999) {
+		root.style.setProperty("--viewport-scale", String(scale));
+	} else {
+		root.style.removeProperty("--viewport-scale");
+	}
 }
 
 /** Keeps layout in sync with the webview client area (fixes initial crop on Windows WebView2). */
@@ -39,7 +30,7 @@ export function useAppViewport() {
 		syncViewportSize();
 
 		const raf = requestAnimationFrame(syncViewportSize);
-		const delays = [0, 50, 150, 400, 800, 1200].map((ms) =>
+		const delays = [0, 50, 150, 400, 800, 1200, 2000].map((ms) =>
 			window.setTimeout(syncViewportSize, ms),
 		);
 

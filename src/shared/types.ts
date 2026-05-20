@@ -103,6 +103,8 @@ export type SoundboardRPC = {
 			};
 			stopAllAudio: { params: Record<string, never>; response: void };
 			stopClipAudio: { params: { id: string }; response: void };
+			minimizeWindow: { params: Record<string, never>; response: void };
+			closeWindow: { params: Record<string, never>; response: void };
 		};
 		messages: Record<string, never>;
 	}>;

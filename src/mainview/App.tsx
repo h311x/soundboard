@@ -311,11 +311,20 @@ export default function App() {
 							.request.downloadUpdate({})
 							.then((info) => {
 								setUpdateInfo(info);
-								if (!info.updateReady && info.error) {
-									showToast(info.error, "error");
+								if (!info.updateReady) {
+									const msg =
+										info.error ||
+										"Update is still downloading — try Download again in a moment.";
+									showToast(msg, "error");
 								}
 							})
-							.catch(() => showToast("Update download failed", "error"))
+							.catch((err) => {
+								console.error(err);
+								showToast(
+									"Update download timed out or failed — try Download again.",
+									"error",
+								);
+							})
 							.finally(() => setUpdateDownloading(false));
 					}}
 					onApply={() => void getRpc().request.applyUpdate({})}

@@ -24,13 +24,47 @@
 	--titlebar-inset-left: 76px;
 }
 
-/* Windows uses the native title bar — hide in-webview duplicate chrome */
-:root[data-platform="windows"] .titlebar {
-	display: none;
+/* Windows: frameless host window — in-app drag strip replaces native title bar */
+:root[data-platform="windows"] .titlebar--windows {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	min-height: 36px;
+	padding: 10px 12px 6px 16px;
+	-webkit-app-region: drag;
+}
+
+:root[data-platform="windows"] .win-window-controls {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	margin-left: auto;
+}
+
+:root[data-platform="windows"] .win-chrome-btn {
+	width: 36px;
+	height: 28px;
+	border: none;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--text-muted);
+	font-size: 1rem;
+	line-height: 1;
+	cursor: pointer;
+}
+
+:root[data-platform="windows"] .win-chrome-btn:hover {
+	background: rgba(255, 255, 255, 0.08);
+	color: var(--text-primary);
+}
+
+:root[data-platform="windows"] .win-chrome-btn--close:hover {
+	background: #c42b1c;
+	color: #fff;
 }
 
 :root[data-platform="windows"] .toolbar {
-	padding-top: 12px;
+	padding-top: 8px;
 }
 
 @media (prefers-reduced-motion: reduce) {

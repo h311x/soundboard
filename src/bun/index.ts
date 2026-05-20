@@ -15,7 +15,7 @@ import {
 import { syncHotkeys, unregisterAllHotkeys, validateHotkey } from "./hotkeys";
 import { checkForUpdatesForApp, downloadUpdateForApp } from "./updater";
 import { playClipOnHost, stopAllOnHost, stopClipOnHost } from "./host-playback";
-import { applyBundledWindowIcon } from "./win-icon";
+import { applyBundledWindowIcon, scheduleBundledWindowIcon } from "./win-icon";
 import { notifyState, sendToWebview } from "./webview-messages";
 
 const DEV_SERVER_PORT = 5173;
@@ -38,7 +38,8 @@ async function getMainViewUrl(): Promise<string> {
 let mainWindow: BrowserWindow;
 
 const rpc = BrowserView.defineRPC<SoundboardRPC>({
-	maxRequestTime: 30000,
+	// Full update downloads can exceed 30s on slow links (first click was timing out).
+	maxRequestTime: 600_000,
 	handlers: {
 		requests: {
 			getState: async () => loadAppState(),
@@ -144,6 +145,12 @@ const rpc = BrowserView.defineRPC<SoundboardRPC>({
 			stopClipAudio: async ({ id }) => {
 				await stopClipOnHost(mainWindow, id);
 			},
+			minimizeWindow: async () => {
+				mainWindow.minimize();
+			},
+			closeWindow: async () => {
+				mainWindow.close();
+			},
 		},
 		messages: {},
 	},
@@ -153,6 +160,7 @@ const settings = await loadSettings();
 const url = await getMainViewUrl();
 const isMac = process.platform === "darwin";
 const isLinux = process.platform === "linux";
+const isWin = process.platform === "win32";
 
 mainWindow = new BrowserWindow({
 	title: "Soundboard",
@@ -161,7 +169,7 @@ mainWindow = new BrowserWindow({
 	frame: {
 		...settings.window,
 	},
-	titleBarStyle: isMac ? "hiddenInset" : "default",
+	titleBarStyle: isMac ? "hiddenInset" : isWin ? "hidden" : "default",
 	transparent: isMac,
 	renderer: isLinux ? "cef" : "native",
 });
@@ -169,9 +177,15 @@ mainWindow = new BrowserWindow({
 mainWindow.setAlwaysOnTop(settings.alwaysOnTop);
 
 void applyBundledWindowIcon(mainWindow);
+scheduleBundledWindowIcon(mainWindow);
 
 let saveBoundsTimer: ReturnType<typeof setTimeout> | null = null;
 let relayoutTimer: ReturnType<typeof setTimeout> | null = null;
+
+function refreshNativeFrame() {
+	const frame = mainWindow.getFrame();
+	mainWindow.setFrame(frame.x, frame.y, frame.width, frame.height);
+}
 
 function scheduleSaveBounds() {
 	if (saveBoundsTimer) clearTimeout(saveBoundsTimer);
@@ -193,6 +207,7 @@ function scheduleSaveBounds() {
 function notifyWebviewRelayout() {
 	if (relayoutTimer) clearTimeout(relayoutTimer);
 	relayoutTimer = setTimeout(() => {
+		refreshNativeFrame();
 		sendToWebview(mainWindow, "relayout", {});
 	}, 50);
 }
@@ -229,6 +244,8 @@ await syncHotkeys(mainWindow);
 
 mainWindow.webview.on("dom-ready", async () => {
 	await applyBundledWindowIcon(mainWindow);
+	scheduleBundledWindowIcon(mainWindow);
+	refreshNativeFrame();
 	notifyWebviewRelayoutBurst();
 
 	const state = await loadAppState();

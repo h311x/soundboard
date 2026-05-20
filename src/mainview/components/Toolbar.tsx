@@ -2,6 +2,7 @@ import type { AccentPresetId } from "@shared/types";
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useSliderCommit } from "../hooks/useSliderCommit";
+import { getRpc } from "../rpc";
 import { ThemePicker } from "./ThemePicker";
 
 type Props = {
@@ -18,6 +19,10 @@ type Props = {
 	onCloseTheme: () => void;
 	accentPreset: AccentPresetId;
 };
+
+const isWindows =
+	typeof document !== "undefined" &&
+	document.documentElement.dataset.platform === "windows";
 
 export function Toolbar({
 	masterVolume,
@@ -83,21 +88,36 @@ export function Toolbar({
 	return (
 		<>
 			<div
-				className="titlebar electrobun-webkit-app-region-drag"
+				className={`titlebar electrobun-webkit-app-region-drag ${isWindows ? "titlebar--windows" : ""}`}
 				title="Drag to move window"
 			>
 				<h1 className="app-title">Soundboard</h1>
+				{isWindows && (
+					<div className="win-window-controls electrobun-webkit-app-region-no-drag">
+						<button
+							type="button"
+							className="win-chrome-btn"
+							title="Minimize"
+							aria-label="Minimize"
+							onClick={() => void getRpc().request.minimizeWindow({})}
+						>
+							<span aria-hidden>−</span>
+						</button>
+						<button
+							type="button"
+							className="win-chrome-btn win-chrome-btn--close"
+							title="Close"
+							aria-label="Close"
+							onClick={() => void getRpc().request.closeWindow({})}
+						>
+							<span aria-hidden>×</span>
+						</button>
+					</div>
+				)}
 			</div>
 
-			<header
-				className={`toolbar ${
-					typeof document !== "undefined" &&
-					document.documentElement.dataset.platform === "windows"
-						? "toolbar--window-drag electrobun-webkit-app-region-drag"
-						: "electrobun-webkit-app-region-no-drag"
-				}`}
-			>
-				<div className="toolbar-actions">
+			<header className="toolbar electrobun-webkit-app-region-no-drag">
+				<div className="toolbar-actions electrobun-webkit-app-region-no-drag">
 					<button type="button" className="btn-primary" onClick={onImport}>
 						Import
 					</button>
@@ -106,8 +126,8 @@ export function Toolbar({
 					</button>
 				</div>
 
-				<div className="toolbar-sliders">
-					<label className="toolbar-control">
+				<div className="toolbar-sliders electrobun-webkit-app-region-no-drag">
+					<label className="toolbar-control electrobun-webkit-app-region-no-drag">
 						<span className="toolbar-label">Volume</span>
 						<input
 							type="range"
@@ -116,14 +136,15 @@ export function Toolbar({
 							step={0.01}
 							value={master.display}
 							onInput={(e) => master.onInput(Number(e.currentTarget.value))}
+							onPointerDown={master.onPointerDown}
 							onPointerUp={master.commit}
 							onPointerCancel={master.commit}
 							onKeyUp={master.commit}
-							className="glass-slider"
+							className="glass-slider electrobun-webkit-app-region-no-drag"
 						/>
 					</label>
 
-					<label className="toolbar-toggle">
+					<label className="toolbar-toggle electrobun-webkit-app-region-no-drag">
 						<input
 							type="checkbox"
 							checked={alwaysOnTop}
@@ -135,7 +156,7 @@ export function Toolbar({
 					<button
 						ref={themeAnchorRef}
 						type="button"
-						className={`icon-btn theme-toggle ${showThemePicker ? "active" : ""}`}
+						className={`icon-btn theme-toggle electrobun-webkit-app-region-no-drag ${showThemePicker ? "active" : ""}`}
 						onClick={(e) => {
 							e.stopPropagation();
 							onToggleTheme();
