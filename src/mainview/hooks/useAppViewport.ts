@@ -1,25 +1,43 @@
 import { useEffect } from "react";
 import { setRelayoutHandler } from "../rpc";
 
+const isWindows =
+	typeof document !== "undefined" &&
+	document.documentElement.dataset.platform === "windows";
+
 /**
- * WebView2 can report a layout viewport larger than the painted area (clip right/bottom).
- * Scale the shell down when inner size is smaller than the layout client size.
+ * WebView2 often reports a layout size larger than the painted webview bounds
+ * (clip on right/bottom), especially with the native Windows title bar.
+ * visualViewport tracks the actually visible area; fall back to scale when needed.
  */
 function syncViewportSize() {
 	const root = document.documentElement;
-	const clientW = root.clientWidth;
-	const clientH = root.clientHeight;
-	const innerW = window.innerWidth;
-	const innerH = window.innerHeight;
+	const vv = window.visualViewport;
+
+	const layoutW = root.clientWidth;
+	const layoutH = root.clientHeight;
+	const paintW = Math.floor(vv?.width ?? layoutW);
+	const paintH = Math.floor(vv?.height ?? layoutH);
+
+	if (isWindows && vv) {
+		if (paintW > 0) root.style.setProperty("--app-width", `${paintW}px`);
+		if (paintH > 0) root.style.setProperty("--app-height", `${paintH}px`);
+		root.style.removeProperty("--viewport-scale");
+		return;
+	}
 
 	let scale = 1;
-	if (clientW > 0 && innerW > 0) scale = Math.min(scale, innerW / clientW);
-	if (clientH > 0 && innerH > 0) scale = Math.min(scale, innerH / clientH);
+	if (layoutW > 0 && paintW > 0) scale = Math.min(scale, paintW / layoutW);
+	if (layoutH > 0 && paintH > 0) scale = Math.min(scale, paintH / layoutH);
 
 	if (scale < 0.999) {
 		root.style.setProperty("--viewport-scale", String(scale));
+		root.style.removeProperty("--app-width");
+		root.style.removeProperty("--app-height");
 	} else {
 		root.style.removeProperty("--viewport-scale");
+		root.style.removeProperty("--app-width");
+		root.style.removeProperty("--app-height");
 	}
 }
 

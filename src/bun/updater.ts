@@ -39,7 +39,18 @@ async function waitForTarFile(
 }
 
 export async function downloadUpdateForApp(): Promise<UpdateInfo> {
-	await Updater.downloadUpdate();
+	try {
+		await Updater.downloadUpdate();
+	} catch (e) {
+		const partial = Updater.updateInfo();
+		return {
+			updateAvailable: partial?.updateAvailable ?? true,
+			updateReady: false,
+			version: partial?.version,
+			error: e instanceof Error ? e.message : "Download failed",
+		};
+	}
+
 	const info = Updater.updateInfo();
 	if (!info) {
 		return { updateAvailable: false, updateReady: false };

@@ -26,8 +26,12 @@ export function setRelayoutHandler(fn: () => void) {
 	onRelayout = fn;
 }
 
+/** Webview → bun requests; default Electrobun timeout is 1s which breaks update downloads. */
+const RPC_MAX_REQUEST_MS = 600_000;
+
 export const electroview = new Electroview({
 	rpc: Electroview.defineRPC<SoundboardRPC>({
+		maxRequestTime: RPC_MAX_REQUEST_MS,
 		handlers: {
 			requests: {},
 			messages: {

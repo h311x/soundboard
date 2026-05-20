@@ -320,10 +320,14 @@ export default function App() {
 							})
 							.catch((err) => {
 								console.error(err);
-								showToast(
-									"Update download timed out or failed — try Download again.",
-									"error",
-								);
+								const detail =
+									err instanceof Error ? err.message : String(err);
+								const msg = detail.includes("timed out")
+									? "Update download timed out — try Download again."
+									: detail
+										? `Update download failed: ${detail}`
+										: "Update download failed — try Download again.";
+								showToast(msg, "error");
 							})
 							.finally(() => setUpdateDownloading(false));
 					}}
