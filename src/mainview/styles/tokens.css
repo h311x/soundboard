@@ -1,0 +1,31 @@
+:root {
+	--titlebar-inset-top: 0px;
+	--titlebar-inset-left: 16px;
+	--bg-base: #08080a;
+	--glass-bg: rgba(255, 255, 255, 0.06);
+	--glass-bg-hover: rgba(255, 255, 255, 0.09);
+	--glass-border: rgba(255, 255, 255, 0.14);
+	--glass-highlight: rgba(255, 255, 255, 0.22);
+	--glass-blur: 28px;
+	--text-primary: rgba(255, 255, 255, 0.92);
+	--text-muted: rgba(255, 255, 255, 0.45);
+	--accent-hsl: 220 12% 62%;
+	--mesh-hsl: 220 14% 14%;
+	--accent: hsl(var(--accent-hsl) / 0.55);
+	--accent-focus: hsl(var(--accent-hsl) / 0.85);
+	--radius-lg: 18px;
+	--radius-sm: 10px;
+	--shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+/* macOS hiddenInset — clear space for traffic lights */
+:root[data-platform="macos"] {
+	--titlebar-inset-top: 26px;
+	--titlebar-inset-left: 76px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	:root {
+		--motion-enabled: 0;
+	}
+}
