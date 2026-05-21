@@ -4,7 +4,8 @@
 	"entry": [
 		"src/bun/index.ts",
 		"src/mainview/main.tsx",
-		"electrobun.config.ts"
+		"electrobun.config.ts",
+		"scripts/patch-win-metadata.ts"
 	],
 
 	"ignorePatterns": [
@@ -25,7 +26,8 @@
 		"concurrently",
 		"globals",
 		"fallow",
-		"@types/bun"
+		"@types/bun",
+		"rcedit"
 	],
 
 	"ignoreExportsUsedInFile": true,

@@ -37,4 +37,10 @@ export default {
 		baseUrl:
 			"https://github.com/h311x/soundboard/releases/latest/download",
 	},
+	// postBuild: patch launcher/bun before tarball (Electrobun CI rcedit is broken — #429)
+	// postPackage: patch Soundboard-Setup.exe + release zip
+	scripts: {
+		postBuild: "scripts/patch-win-metadata.ts",
+		postPackage: "scripts/patch-win-metadata.ts",
+	},
 } satisfies ElectrobunConfig;

@@ -122,7 +122,7 @@ On Windows, the UI uses **WebView2**. If sounds were played only inside the webv
 
 **Soundboard 0.1.5+** plays clips from the main app process (`bun.exe` / `launcher.exe`) on Windows so routing apps (Voicemeeter, OBS, etc.) should show **Soundboard**. Host playback supports **MP3 and WAV**; other formats (OGG, M4A, AAC, WebM) still use WebView audio and may show the generic Windows label.
 
-Icons come from `build.win.icon` / `build.mac.icons` in `electrobun.config.ts` (committed `assets/icon/icon.ico` and `icon.iconset/`). Electrobun embeds them at build time.
+Icons come from `build.win.icon` / `build.mac.icons` in `electrobun.config.ts` (committed `assets/icon/icon.ico` and `icon.iconset/`). On Windows, `scripts/patch-win-metadata.ts` re-embeds them via `postBuild` / `postPackage` because Electrobun’s built-in rcedit step fails on GitHub Actions ([electrobun#429](https://github.com/blackboardsh/electrobun/issues/429)) — without that patch, `bun.exe` keeps the Bun mascot and `launcher.exe` has no icon.
 
 If the taskbar icon is still stale after updating: unpin Soundboard, quit the app, relaunch from the updated install folder, then pin again (Windows icon cache).
 
