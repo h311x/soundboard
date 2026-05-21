@@ -35,7 +35,10 @@ export function ClipPadFooter({
 					onPointerCancel={volume.commit}
 					onKeyUp={volume.commit}
 					className="clip-slider"
-					onPointerDown={cancelDragPointer}
+					onPointerDown={(e) => {
+						volume.onPointerDown(e);
+						cancelDragPointer(e);
+					}}
 					onClick={(e) => e.stopPropagation()}
 				/>
 			</label>

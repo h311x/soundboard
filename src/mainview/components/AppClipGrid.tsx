@@ -15,14 +15,15 @@ import {
 	SortableContext,
 	sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo } from "react";
+import { flushSync } from "react-dom";
 import { audioEngine } from "../audio/engine";
 import {
+	appStateWithClipOrder,
+	appStateWithClipVolume,
 	clipIdsAfterDrag,
 	clipIdsEqual,
 	persistClipOrderIfChanged,
-	pruneOrderOverride,
-	resolveClipIds,
 } from "../app/clipDrag";
 import { getRpc } from "../rpc";
 import { ClipPad } from "./ClipPad";
@@ -31,7 +32,7 @@ export type AppClipGridProps = {
 	state: AppState;
 	playback: PlaybackSnapshot;
 	getState: () => AppState | null;
-	applyState: (s: AppState) => Promise<void>;
+	applyStateSync: (s: AppState) => void;
 	onPlay: (clip: Clip) => void;
 	onEdit: (clip: Clip) => void;
 	onEditHotkey: (clip: Clip) => void;
@@ -40,7 +41,8 @@ export type AppClipGridProps = {
 export function AppClipGrid({
 	state,
 	playback,
-	applyState,
+	getState,
+	applyStateSync,
 	onPlay,
 	onEdit,
 	onEditHotkey,
@@ -55,29 +57,10 @@ export function AppClipGrid({
 		}),
 	);
 
-	const serverClipIds = useMemo(
+	const clipIds = useMemo(
 		() => state.board.clips.map((c) => c.id),
 		[state.board.clips],
 	);
-
-	// Local order after drag until RPC updates serverClipIds (avoids sync effect
-	// resetting to stale server order on unrelated parent re-renders).
-	const [orderOverride, setOrderOverride] = useState<string[] | null>(null);
-	const clipIds = useMemo(
-		() => resolveClipIds(orderOverride, serverClipIds),
-		[orderOverride, serverClipIds],
-	);
-	const clipIdsRef = useRef(clipIds);
-	const serverClipIdsRef = useRef(serverClipIds);
-
-	useEffect(() => {
-		clipIdsRef.current = clipIds;
-	}, [clipIds]);
-
-	useEffect(() => {
-		serverClipIdsRef.current = serverClipIds;
-	}, [serverClipIds]);
-
 	const clipsById = useMemo(
 		() => new Map(state.board.clips.map((c) => [c.id, c] as const)),
 		[state.board.clips],
@@ -91,25 +74,22 @@ export function AppClipGrid({
 		[clipIds, clipsById],
 	);
 
-	const handleDragStart = useCallback(() => {
-		setOrderOverride((pending) =>
-			pruneOrderOverride(pending, serverClipIdsRef.current),
-		);
-	}, []);
-
 	const handleDragEnd = useCallback(
 		(event: DragEndEvent) => {
-			const next = clipIdsAfterDrag(event, clipIdsRef.current);
+			const serverIds = state.board.clips.map((c) => c.id);
+			const next = clipIdsAfterDrag(event, serverIds);
 			if (next === null) return;
-			if (clipIdsEqual(next, serverClipIdsRef.current)) return;
-			setOrderOverride(next);
-			persistClipOrderIfChanged(
-				next,
-				serverClipIdsRef.current,
-				applyState,
-			);
+			if (clipIdsEqual(next, serverIds)) return;
+
+			// Commit DOM order before dnd-kit clears transforms (one-frame flash otherwise).
+			flushSync(() => {
+				const current = getState();
+				if (current) applyStateSync(appStateWithClipOrder(current, next));
+			});
+
+			persistClipOrderIfChanged(next, serverIds);
 		},
-		[applyState],
+		[state.board.clips, getState, applyStateSync],
 	);
 
 	return (
@@ -117,7 +97,6 @@ export function AppClipGrid({
 			sensors={sensors}
 			collisionDetection={closestCenter}
 			modifiers={[restrictToParentElement]}
-			onDragStart={handleDragStart}
 			onDragEnd={handleDragEnd}
 		>
 			<SortableContext items={clipIds} strategy={rectSortingStrategy}>
@@ -133,7 +112,9 @@ export function AppClipGrid({
 							onEdit={() => onEdit(clip)}
 							onEditHotkey={() => onEditHotkey(clip)}
 							onVolumePreview={(v) => previewClipVolume(clip.id, v, state)}
-							onVolumeCommit={(v) => commitClipVolume(clip.id, v, applyState)}
+							onVolumeCommit={(v) =>
+								commitClipVolume(clip.id, v, getState, applyStateSync)
+							}
 						/>
 					))}
 				</div>
@@ -151,15 +132,23 @@ function stopClip(clip: Clip, state: AppState): void {
 }
 
 function previewClipVolume(clipId: string, volume: number, state: AppState): void {
+	if (state.capabilities.hostAudio) {
+		void getRpc().request.previewClipVolume({
+			id: clipId,
+			volume: volume * state.board.masterVolume,
+		});
+		return;
+	}
 	audioEngine.setClipVolume(clipId, volume);
-	if (!state.capabilities.hostAudio) return;
-	void getRpc().request.previewClipVolume({ id: clipId, volume });
 }
 
 function commitClipVolume(
 	clipId: string,
 	volume: number,
-	applyState: (s: AppState) => Promise<void>,
+	getState: () => AppState | null,
+	applyStateSync: (s: AppState) => void,
 ): void {
-	void getRpc().request.setClipVolume({ id: clipId, volume }).then(applyState);
+	const current = getState();
+	if (current) applyStateSync(appStateWithClipVolume(current, clipId, volume));
+	void getRpc().request.setClipVolume({ id: clipId, volume });
 }

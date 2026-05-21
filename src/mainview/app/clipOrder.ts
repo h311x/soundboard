@@ -1,5 +1,6 @@
 import type { DragEndEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
+import type { AppState, Clip } from "@shared/types";
 
 export function clipIdsAfterDrag(
 	event: DragEndEvent,
@@ -35,6 +36,50 @@ export function pruneOrderOverride(
 ): string[] | null {
 	if (!pending || orderOverrideStale(pending, serverIds)) return null;
 	return pending;
+}
+
+export function appStateWithClipVolume(
+	state: AppState,
+	clipId: string,
+	volume: number,
+): AppState {
+	const clamped = Math.max(0, Math.min(1, volume));
+	return {
+		...state,
+		board: {
+			...state.board,
+			clips: state.board.clips.map((clip) =>
+				clip.id === clipId ? { ...clip, volume: clamped } : clip,
+			),
+		},
+	};
+}
+
+export function appStateWithMasterVolume(
+	state: AppState,
+	masterVolume: number,
+): AppState {
+	const clamped = Math.max(0, Math.min(1, masterVolume));
+	return {
+		...state,
+		board: { ...state.board, masterVolume: clamped },
+	};
+}
+
+export function appStateWithClipOrder(state: AppState, ids: string[]): AppState {
+	const byId = new Map(state.board.clips.map((c) => [c.id, c] as const));
+	const clips: Clip[] = [];
+	const idSet = new Set(ids);
+
+	for (const id of ids) {
+		const clip = byId.get(id);
+		if (clip) clips.push(clip);
+	}
+	for (const clip of state.board.clips) {
+		if (!idSet.has(clip.id)) clips.push(clip);
+	}
+
+	return { ...state, board: { ...state.board, clips } };
 }
 
 export function clipIdsEqual(a: string[], b: string[]): boolean {

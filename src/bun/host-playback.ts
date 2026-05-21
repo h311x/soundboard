@@ -110,15 +110,14 @@ export async function stopAllOnHost(win: BrowserWindow) {
 	emitSnapshot(win);
 }
 
+/** `effectiveVolume` is clip × master (0–1), already scaled in the webview. */
 export async function previewClipVolumeOnHost(
 	clipId: string,
-	clipVolume: number,
+	effectiveVolume: number,
 ): Promise<void> {
 	if (process.platform !== "win32") return;
-	const state = await loadAppState();
-	const effective = clipVolume * state.board.masterVolume;
 	const audio = await winAudio();
-	applyVolumeToClipPlays(plays, clipId, effective, audio.setAliasVolume);
+	applyVolumeToClipPlays(plays, clipId, effectiveVolume, audio.setAliasVolume);
 }
 
 export async function previewMasterVolumeOnHost(

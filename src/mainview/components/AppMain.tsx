@@ -1,4 +1,6 @@
-import type { AppState, Clip, PlaybackSnapshot, UpdateInfo } from "@shared/types";
+import type { AppState, Clip, UpdateInfo } from "@shared/types";
+import { appStateWithMasterVolume } from "../app/clipDrag";
+import type { AppCoreProps } from "../app/appCoreProps";
 import { audioEngine } from "../audio/engine";
 import { allowFileDrop, importDroppedFiles } from "../app/fileDrop";
 import { getRpc } from "../rpc";
@@ -11,12 +13,7 @@ import { UpdateBanner } from "./UpdateBanner";
 
 export type AppToastState = { message: string; variant?: "info" | "error" } | null;
 
-export type AppMainProps = {
-	state: AppState;
-	playback: PlaybackSnapshot;
-	getState: () => AppState | null;
-	applyState: (s: AppState) => Promise<void>;
-	showToast: (message: string, variant?: "info" | "error") => void;
+export type AppMainProps = AppCoreProps & {
 	toast: AppToastState;
 	onDismissToast: () => void;
 	audioBlocked: boolean;
@@ -86,7 +83,7 @@ function AppMainContent(props: AppMainProps) {
 					state={props.state}
 					playback={props.playback}
 					getState={props.getState}
-					applyState={props.applyState}
+					applyStateSync={props.applyStateSync}
 					onPlay={props.onPlay}
 					onEdit={(clip) => props.onEditClip(clip)}
 					onEditHotkey={(clip) => props.onHotkeyClip(clip)}
@@ -115,6 +112,8 @@ function AppToolbarSection({
 	onToggleTheme,
 	onCloseTheme,
 	applyState,
+	getState,
+	applyStateSync,
 }: AppMainProps) {
 	return (
 		<Toolbar
@@ -125,9 +124,7 @@ function AppToolbarSection({
 			onImport={() => void importViaDialog(applyState)}
 			onStopAll={() => stopAllSounds(state)}
 			onMasterVolumePreview={(v) => previewMasterVolume(v, state)}
-			onMasterVolumeCommit={(v) =>
-				void getRpc().request.setMasterVolume({ volume: v }).then(applyState)
-			}
+			onMasterVolumeCommit={(v) => commitMasterVolume(v, getState, applyStateSync)}
 			onAlwaysOnTop={(enabled) =>
 				void getRpc().request.setAlwaysOnTop({ enabled }).then(applyState)
 			}
@@ -189,7 +186,19 @@ function stopAllSounds(state: AppState): void {
 }
 
 function previewMasterVolume(volume: number, state: AppState): void {
+	if (state.capabilities.hostAudio) {
+		void getRpc().request.previewMasterVolume({ volume });
+		return;
+	}
 	audioEngine.setMasterVolume(volume);
-	if (!state.capabilities.hostAudio) return;
-	void getRpc().request.previewMasterVolume({ volume });
+}
+
+function commitMasterVolume(
+	volume: number,
+	getState: () => AppState | null,
+	applyStateSync: (s: AppState) => void,
+): void {
+	const current = getState();
+	if (current) applyStateSync(appStateWithMasterVolume(current, volume));
+	void getRpc().request.setMasterVolume({ volume });
 }

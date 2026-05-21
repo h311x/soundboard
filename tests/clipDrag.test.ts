@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { DragEndEvent } from "@dnd-kit/core";
+import type { AppState } from "../src/shared/types";
 import {
+	appStateWithClipOrder,
+	appStateWithClipVolume,
 	clipIdsAfterDrag,
 	clipIdsEqual,
 	moveClipIds,
@@ -42,6 +45,41 @@ describe("pruneOrderOverride", () => {
 
 	test("keeps pending reorder", () => {
 		expect(pruneOrderOverride(["b", "a"], server)).toEqual(["b", "a"]);
+	});
+});
+
+describe("appStateWithClipVolume", () => {
+	test("updates one clip volume", () => {
+		const state = {
+			board: {
+				masterVolume: 1,
+				clips: [
+					{ id: "a", displayName: "A", volume: 0.5 },
+					{ id: "b", displayName: "B", volume: 0.3 },
+				],
+			},
+		} as AppState;
+
+		const next = appStateWithClipVolume(state, "a", 0.9);
+		expect(next.board.clips.find((c) => c.id === "a")?.volume).toBe(0.9);
+		expect(next.board.clips.find((c) => c.id === "b")?.volume).toBe(0.3);
+	});
+});
+
+describe("appStateWithClipOrder", () => {
+	test("reorders clips and keeps unlisted at the end", () => {
+		const state = {
+			board: {
+				clips: [
+					{ id: "a", displayName: "A" },
+					{ id: "b", displayName: "B" },
+					{ id: "c", displayName: "C" },
+				],
+			},
+		} as AppState;
+
+		const next = appStateWithClipOrder(state, ["c", "a"]);
+		expect(next.board.clips.map((c) => c.id)).toEqual(["c", "a", "b"]);
 	});
 });
 

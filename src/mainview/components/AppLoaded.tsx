@@ -1,18 +1,14 @@
-import type { AppState, Clip, PlaybackSnapshot, UpdateInfo } from "@shared/types";
+import type { Clip, UpdateInfo } from "@shared/types";
+import type { AppCoreProps } from "../app/appCoreProps";
 import { AppMain } from "./AppMain";
 import type { AppToastState } from "./AppMain";
 
-export type AppModel = {
-	state: AppState;
+export type AppModel = AppCoreProps & {
 	toast: AppToastState;
 	editClip: Clip | null;
 	hotkeyClip: Clip | null;
 	showThemePicker: boolean;
 	audioBlocked: boolean;
-	playback: PlaybackSnapshot;
-	getState: () => AppState | null;
-	applyState: (s: AppState) => Promise<void>;
-	showToast: (message: string, variant?: "info" | "error") => void;
 	onPlay: (clip: Clip) => void;
 	setEditClip: (clip: Clip | null) => void;
 	setHotkeyClip: (clip: Clip | null) => void;
@@ -32,6 +28,7 @@ export function AppLoaded({ model }: { model: AppModel }) {
 			playback={model.playback}
 			getState={model.getState}
 			applyState={model.applyState}
+			applyStateSync={model.applyStateSync}
 			showToast={model.showToast}
 			toast={model.toast}
 			onDismissToast={() => model.setToast(null)}

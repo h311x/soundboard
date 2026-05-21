@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type PointerEvent } from "react";
+import { useCallback, useState, type PointerEvent } from "react";
 
 /** Local slider value while dragging; persist only on commit. */
 export function useSliderCommit(
@@ -7,23 +7,20 @@ export function useSliderCommit(
 	onCommit: (v: number) => void,
 ) {
 	const [local, setLocal] = useState<number | null>(null);
-	const draggingRef = useRef(false);
-	const display = local ?? value;
+	const [dragging, setDragging] = useState(false);
+	const display = sliderDisplay(value, local, dragging);
 
 	const onInput = useCallback(
 		(next: number) => {
-			if (local !== null && Math.abs(value - local) < 0.005) {
-				setLocal(null);
-			}
-			draggingRef.current = true;
+			setDragging(true);
 			setLocal(next);
 			onPreview(next);
 		},
-		[local, onPreview, value],
+		[onPreview],
 	);
 
 	const commit = useCallback(() => {
-		draggingRef.current = false;
+		setDragging(false);
 		if (local === null) return;
 		onCommit(local);
 	}, [local, onCommit]);
@@ -34,6 +31,20 @@ export function useSliderCommit(
 	}, []);
 
 	return { display, onInput, commit, onPointerDown };
+}
+
+export function sliderDisplay(
+	value: number,
+	local: number | null,
+	dragging: boolean,
+): number {
+	if (local === null) return value;
+	if (dragging || !volumesClose(value, local)) return local;
+	return value;
+}
+
+export function volumesClose(a: number, b: number): boolean {
+	return Math.abs(a - b) < 0.005;
 }
 
 export type SliderCommit = ReturnType<typeof useSliderCommit>;

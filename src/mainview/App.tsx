@@ -50,14 +50,18 @@ function useAppModel() {
 
 	const update = useUpdateDownload(showToast);
 
+	const applyStateSync = useCallback((appState: AppState) => {
+		stateRef.current = appState;
+		setState(appState);
+		applyAccentPreset(appState.settings.accentPreset);
+	}, []);
+
 	const applyState = useCallback(
 		async (appState: AppState) => {
-			stateRef.current = appState;
-			setState(appState);
-			applyAccentPreset(appState.settings.accentPreset);
+			applyStateSync(appState);
 			await syncAudio(appState);
 		},
-		[syncAudio],
+		[applyStateSync, syncAudio],
 	);
 
 	const getState = useCallback(() => stateRef.current, []);
@@ -120,6 +124,7 @@ function useAppModel() {
 		playback,
 		getState,
 		applyState,
+		applyStateSync,
 		showToast,
 		onPlay,
 		setEditClip,
