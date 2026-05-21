@@ -4,8 +4,7 @@
 	"entry": [
 		"src/bun/index.ts",
 		"src/mainview/main.tsx",
-		"electrobun.config.ts",
-		"scripts/*.ts"
+		"electrobun.config.ts"
 	],
 
 	"ignorePatterns": [

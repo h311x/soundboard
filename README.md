@@ -124,8 +124,6 @@ On Windows, the UI uses **WebView2**. If sounds were played only inside the webv
 
 Icons come from `build.win.icon` / `build.mac.icons` in `electrobun.config.ts` (committed `assets/icon/icon.ico` and `icon.iconset/`). Electrobun embeds them at build time.
 
-After building on Windows, `scripts/patch-win-metadata.ts` sets **ProductName** / **FileDescription** on bundle executables (Task Manager / routing tools), not icons.
-
 If the taskbar icon is still stale after updating: unpin Soundboard, quit the app, relaunch from the updated install folder, then pin again (Windows icon cache).
 
 ### Windows window chrome
