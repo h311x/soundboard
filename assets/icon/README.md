@@ -1,17 +1,14 @@
 # App icon
 
-| File | Purpose |
-|------|---------|
-| `app-icon.svg` | **Source of truth** — edit this, then regenerate platform assets |
-| `app-icon-1024.png` | Master raster (generated) |
-| `icon.ico` | Windows build (generated) |
+Committed platform assets (Electrobun reads these at build time; CI does not regenerate them).
 
-macOS uses `icon.iconset/` at the repo root (generated from the SVG).
+| File / folder | Purpose |
+|---------------|---------|
+| `app-icon.svg` | Source artwork — edit in a vector editor, then re-export the raster assets below |
+| `app-icon-1024.png` | Master PNG reference |
+| `icon.ico` | Windows (`build.win.icon`) |
+| `../../icon.iconset/` | macOS (`build.mac.icons`) |
 
-Regenerate after changing the artwork:
+Electrobun docs: [Application Icons](https://blackboard.sh/electrobun/docs/apis/application-icons/).
 
-```bash
-bun run icons
-```
-
-Preview drafts live in `assets/previews/`.
+Preview drafts: `assets/previews/`.

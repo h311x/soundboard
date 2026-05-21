@@ -48,7 +48,14 @@ function useAppModel() {
 		await audioEngine.preloadAll(appState.board.clips);
 	}, []);
 
-	const update = useUpdateDownload(showToast);
+	const {
+		updateInfo,
+		downloading: updateDownloading,
+		statusMessage: updateStatusMessage,
+		startDownload,
+		checkForUpdates,
+		dismissUpdate,
+	} = useUpdateDownload(showToast);
 
 	const applyStateSync = useCallback((appState: AppState) => {
 		stateRef.current = appState;
@@ -99,8 +106,11 @@ function useAppModel() {
 		});
 
 		void getRpc().request.getState({}).then(applyState).catch(console.error);
-		void update.checkForUpdates();
-	}, [applyState, onPlay, showToast, update]);
+	}, [applyState, onPlay, showToast]);
+
+	useEffect(() => {
+		void checkForUpdates();
+	}, [checkForUpdates]);
 
 	useEffect(() => {
 		const unlock = () => {
@@ -131,11 +141,11 @@ function useAppModel() {
 		setHotkeyClip,
 		setShowThemePicker,
 		setToast,
-		setUpdateInfo: update.setUpdateInfo,
-		updateInfo: update.updateInfo,
-		updateDownloading: update.downloading,
-		updateStatusMessage: update.statusMessage,
-		startDownload: update.startDownload,
+		updateInfo,
+		updateDownloading,
+		updateStatusMessage,
+		startDownload,
+		dismissUpdate,
 	};
 }
 

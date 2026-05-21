@@ -26,8 +26,9 @@ bun run fallow       # Dead code, duplication, complexity (strict)
 bun run fallow:fix   # Auto-fix where Fallow supports it
 bun run check        # lint + typecheck + fallow
 bun run test         # Unit tests (Bun)
-bun run icons        # Regenerate app icons from assets/icon/
 ```
+
+App icons are committed under `assets/icon/` and `icon.iconset/` (see `assets/icon/README.md`). CI uses those files directly — no generation step.
 
 ## Build
 
@@ -121,7 +122,9 @@ On Windows, the UI uses **WebView2**. If sounds were played only inside the webv
 
 **Soundboard 0.1.5+** plays clips from the main app process (`bun.exe` / `launcher.exe`) on Windows so routing apps (Voicemeeter, OBS, etc.) should show **Soundboard**. Host playback supports **MP3 and WAV**; other formats (OGG, M4A, AAC, WebM) still use WebView audio and may show the generic Windows label.
 
-After building on Windows, `scripts/patch-win-metadata.ts` re-embeds the app icon and sets **ProductName** / **FileDescription** on `launcher.exe`, `bun.exe`, and `Soundboard.exe`.
+Icons come from `build.win.icon` / `build.mac.icons` in `electrobun.config.ts` (committed `assets/icon/icon.ico` and `icon.iconset/`). Electrobun embeds them at build time.
+
+After building on Windows, `scripts/patch-win-metadata.ts` sets **ProductName** / **FileDescription** on bundle executables (Task Manager / routing tools), not icons.
 
 If the taskbar icon is still stale after updating: unpin Soundboard, quit the app, relaunch from the updated install folder, then pin again (Windows icon cache).
 

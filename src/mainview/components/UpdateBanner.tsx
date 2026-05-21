@@ -53,7 +53,7 @@ export function UpdateBanner(props: UpdateBannerProps) {
 }
 
 function bannerClass(phase: UpdateBannerPhase, downloading: boolean): string {
-	const parts = ["update-banner"];
+	const parts = ["update-banner", "update-banner--animate-in"];
 	if (phase === "ready") parts.push("update-banner--ready");
 	if (downloading) parts.push("update-banner--downloading");
 	return parts.join(" ");

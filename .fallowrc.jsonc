@@ -24,8 +24,6 @@
 
 	"ignoreDependencies": [
 		"concurrently",
-		"@resvg/resvg-js",
-		"png-to-ico",
 		"globals",
 		"fallow",
 		"@types/bun"

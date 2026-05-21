@@ -14,7 +14,7 @@ export type AppModel = AppCoreProps & {
 	setHotkeyClip: (clip: Clip | null) => void;
 	setShowThemePicker: (v: boolean | ((s: boolean) => boolean)) => void;
 	setToast: (toast: AppToastState) => void;
-	setUpdateInfo: (info: UpdateInfo | null) => void;
+	dismissUpdate: () => void;
 	updateInfo: UpdateInfo | null;
 	updateDownloading: boolean;
 	updateStatusMessage?: string;
@@ -40,7 +40,7 @@ export function AppLoaded({ model }: { model: AppModel }) {
 			updateDownloading={model.updateDownloading}
 			updateStatusMessage={model.updateStatusMessage}
 			onStartDownload={() => void model.startDownload()}
-			onDismissUpdate={() => model.setUpdateInfo(null)}
+			onDismissUpdate={model.dismissUpdate}
 			editClip={model.editClip}
 			hotkeyClip={model.hotkeyClip}
 			onEditClip={model.setEditClip}

@@ -850,6 +850,9 @@ body {
 	z-index: 3;
 	flex-shrink: 0;
 	overflow: hidden;
+}
+
+.update-banner--animate-in {
 	animation: updateBannerIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
@@ -1269,7 +1272,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.update-banner {
+	.update-banner--animate-in {
 		animation: none;
 	}
 	.update-banner--downloading .update-banner__icon,

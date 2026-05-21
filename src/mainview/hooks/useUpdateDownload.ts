@@ -2,10 +2,16 @@ import type { UpdateDownloadState, UpdateInfo } from "@shared/types";
 import {
 	useCallback,
 	useEffect,
+	useMemo,
 	useRef,
 	useState,
 	type MutableRefObject,
 } from "react";
+import {
+	pickUpdateInfo,
+	shouldShowUpdate,
+	updateInfoEqual,
+} from "../app/updateState";
 import { getRpc, setUpdateDownloadHandler } from "../rpc";
 
 const POLL_MS = 1000;
@@ -17,15 +23,26 @@ export function useUpdateDownload(
 	const [downloading, setDownloading] = useState(false);
 	const [statusMessage, setStatusMessage] = useState<string | undefined>();
 	const downloadingRef = useRef(false);
+	const dismissedVersionRef = useRef<string | null>(null);
+
+	const publishUpdateInfo = useCallback((info: UpdateInfo) => {
+		if (!shouldShowUpdate(info, dismissedVersionRef.current)) {
+			setUpdateInfo(null);
+			return;
+		}
+		setUpdateInfo((prev) => (updateInfoEqual(prev, info) ? prev : info));
+	}, []);
 
 	const applyDownloadState = useCallback(
 		(state: UpdateDownloadState) => {
-			applyReadyState(state, downloadingRef, setDownloading);
-			setUpdateInfo(state);
-			setStatusMessage(state.statusMessage);
+			syncDownloading(state, downloadingRef, setDownloading);
+			setStatusMessage((prev) =>
+				prev === state.statusMessage ? prev : state.statusMessage,
+			);
+			publishUpdateInfo(pickUpdateInfo(state));
 			reportDownloadError(state, showToast, downloadingRef, setDownloading);
 		},
-		[showToast],
+		[publishUpdateInfo, showToast],
 	);
 
 	useEffect(() => {
@@ -58,30 +75,47 @@ export function useUpdateDownload(
 	const checkForUpdates = useCallback(async () => {
 		try {
 			const info = await getRpc().request.checkForUpdates({});
-			setUpdateInfo(info);
+			publishUpdateInfo(info);
 		} catch (e) {
 			console.error("Update check failed:", e);
 		}
+	}, [publishUpdateInfo]);
+
+	const dismissUpdate = useCallback(() => {
+		setUpdateInfo((prev) => {
+			if (prev?.version) dismissedVersionRef.current = prev.version;
+			return null;
+		});
 	}, []);
 
-	return {
-		updateInfo,
-		setUpdateInfo,
-		downloading,
-		statusMessage,
-		startDownload,
-		checkForUpdates,
-	};
+	return useMemo(
+		() => ({
+			updateInfo,
+			downloading,
+			statusMessage,
+			startDownload,
+			checkForUpdates,
+			dismissUpdate,
+		}),
+		[
+			updateInfo,
+			downloading,
+			statusMessage,
+			startDownload,
+			checkForUpdates,
+			dismissUpdate,
+		],
+	);
 }
 
-function applyReadyState(
+function syncDownloading(
 	state: UpdateDownloadState,
 	downloadingRef: MutableRefObject<boolean>,
 	setDownloading: (v: boolean) => void,
 ): void {
-	if (!state.updateReady) return;
-	setDownloading(false);
-	downloadingRef.current = false;
+	const active = state.updateReady ? false : state.downloading;
+	setDownloading(active);
+	downloadingRef.current = active;
 }
 
 function reportDownloadError(

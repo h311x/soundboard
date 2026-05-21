@@ -1,5 +1,6 @@
 import type { AppState, Clip, UpdateInfo } from "@shared/types";
 import { appStateWithMasterVolume } from "../app/clipDrag";
+import { updateBannerKey } from "../app/updateState";
 import type { AppCoreProps } from "../app/appCoreProps";
 import { audioEngine } from "../audio/engine";
 import { allowFileDrop, importDroppedFiles } from "../app/fileDrop";
@@ -144,11 +145,14 @@ function AppUpdateSection({
 	onStartDownload,
 	onDismissUpdate,
 }: AppMainProps) {
-	if (!updateInfo?.updateAvailable) return null;
+	const info = updateInfo;
+	const bannerKey = updateBannerKey(info);
+	if (!info || !bannerKey) return null;
 	return (
 		<UpdateBanner
-			version={updateInfo.version}
-			ready={updateInfo.updateReady}
+			key={bannerKey}
+			version={info.version}
+			ready={info.updateReady}
 			downloading={updateDownloading}
 			statusMessage={updateStatusMessage}
 			onDownload={onStartDownload}
