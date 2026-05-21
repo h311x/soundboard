@@ -30,6 +30,21 @@ bun run test         # Unit tests (Bun)
 
 App icons are committed under `assets/icon/` and `icon.iconset/` (see `assets/icon/README.md`). CI uses those files directly — no generation step.
 
+### Windows: why we patch icons after build
+
+`electrobun.config.ts` sets `build.win.icon` to `assets/icon/icon.ico`. Electrobun is supposed to embed that into `launcher.exe`, `bun.exe`, and the setup installer via `rcedit`.
+
+On **Windows GitHub Actions**, that step silently fails ([electrobun#429](https://github.com/blackboardsh/electrobun/issues/429)): the downloaded Electrobun CLI looks for `rcedit` in its own temp bundle (`B:\~BUN\root\electrobun\...`), not in this repo’s `node_modules`. Adding `rcedit` as a project dependency alone does not help — Electrobun never resolves it from here.
+
+**Symptoms in shipped builds without the patch:**
+
+- Taskbar shows the **Bun mascot** (`bun.exe` keeps Bun’s embedded icon)
+- Desktop / Explorer shortcuts show a **generic `.exe` icon** (`launcher.exe` has no icon resources)
+
+**Workaround in this repo:** `scripts/patch-win-metadata.ts`, wired as Electrobun `postBuild` / `postPackage` hooks. It runs from the project with our `rcedit`, patches `launcher.exe` and `bun.exe` **before** the release tarball is created, then patches the setup `.exe` inside the release zip.
+
+**Upstream fix:** [electrobun#433](https://github.com/blackboardsh/electrobun/pull/433) (resolve `rcedit` from `projectRoot` — not merged as of 1.18.1). When that lands in a release we use, this script can be removed.
+
 ## Build
 
 ```bash
@@ -122,7 +137,7 @@ On Windows, the UI uses **WebView2**. If sounds were played only inside the webv
 
 **Soundboard 0.1.5+** plays clips from the main app process (`bun.exe` / `launcher.exe`) on Windows so routing apps (Voicemeeter, OBS, etc.) should show **Soundboard**. Host playback supports **MP3 and WAV**; other formats (OGG, M4A, AAC, WebM) still use WebView audio and may show the generic Windows label.
 
-Icons come from `build.win.icon` / `build.mac.icons` in `electrobun.config.ts` (committed `assets/icon/icon.ico` and `icon.iconset/`). On Windows, `scripts/patch-win-metadata.ts` re-embeds them via `postBuild` / `postPackage` because Electrobun’s built-in rcedit step fails on GitHub Actions ([electrobun#429](https://github.com/blackboardsh/electrobun/issues/429)) — without that patch, `bun.exe` keeps the Bun mascot and `launcher.exe` has no icon.
+Windows icons are covered above ([Windows: why we patch icons after build](#windows-why-we-patch-icons-after-build)). macOS icons come from `icon.iconset/` via `build.mac.icons`.
 
 If the taskbar icon is still stale after updating: unpin Soundboard, quit the app, relaunch from the updated install folder, then pin again (Windows icon cache).
 

@@ -54,7 +54,6 @@ function resolveRceditExe(): string {
 	return rceditExe;
 }
 
-// fallow-ignore-next-line complexity
 function findExes(dir: string, out: string[] = []): string[] {
 	if (!existsSync(dir)) return out;
 	for (const entry of readdirSync(dir)) {
@@ -134,7 +133,6 @@ function patchInstallerExes(rceditExe: string): number {
 	return count;
 }
 
-// fallow-ignore-next-line complexity
 function patchSetupZip(zipPath: string, rceditExe: string): boolean {
 	if (process.platform !== "win32") return false;
 
@@ -164,7 +162,6 @@ function patchSetupZip(zipPath: string, rceditExe: string): boolean {
 	}
 }
 
-// fallow-ignore-next-line complexity
 function patchSetupZips(rceditExe: string): number {
 	if (!existsSync(ARTIFACT_DIR)) return 0;
 	let count = 0;
@@ -175,7 +172,6 @@ function patchSetupZips(rceditExe: string): number {
 	return count;
 }
 
-// fallow-ignore-next-line complexity
 function main(): void {
 	if (process.env.ELECTROBUN_OS && process.env.ELECTROBUN_OS !== "win") {
 		console.log("Skipping Windows icon patch (not a Windows build).");

@@ -60,6 +60,8 @@
 	"health": {
 		"maxCyclomatic": 12,
 		"maxCognitive": 10,
-		"maxCrap": 15
+		"maxCrap": 15,
+		"ignore": ["scripts/**"],
+		"suggestInlineSuppression": false
 	}
 }
