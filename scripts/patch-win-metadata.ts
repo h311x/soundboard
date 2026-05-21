@@ -1,12 +1,9 @@
 /**
  * Embed Soundboard icon + PE metadata on Windows executables.
  *
- * Electrobun's built-in rcedit step fails on Windows CI (cannot resolve rcedit from
- * the downloaded CLI bundle — see https://github.com/blackboardsh/electrobun/issues/429).
- * bun.exe keeps the Bun mascot; launcher.exe has no icon. This script uses rcedit from
- * this project's node_modules instead.
- *
- * Wired as postBuild (patch bundle before tar) and postPackage (patch installer + zip).
+ * Electrobun's built-in rcedit step fails on Windows CI (electrobun#429): the
+ * downloaded CLI resolves rcedit from Bun's temp bundle, not this project.
+ * This script runs from postBuild/postPackage with our rcedit dependency instead.
  */
 import { execFileSync, execSync } from "node:child_process";
 import {
@@ -42,8 +39,7 @@ function readVersion(): string {
 const VERSION = readVersion();
 
 function resolveRceditExe(): string {
-	const rceditPkg = require.resolve("rcedit/package.json");
-	const rceditDir = dirname(rceditPkg);
+	const rceditDir = dirname(require.resolve("rcedit/package.json"));
 	const rceditX64 = join(rceditDir, "bin", "rcedit-x64.exe");
 	const rceditExe = existsSync(rceditX64)
 		? rceditX64

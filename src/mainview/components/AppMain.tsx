@@ -149,16 +149,18 @@ function AppUpdateSection({
 	const bannerKey = updateBannerKey(info);
 	if (!info || !bannerKey) return null;
 	return (
-		<UpdateBanner
-			key={bannerKey}
-			version={info.version}
-			ready={info.updateReady}
-			downloading={updateDownloading}
-			statusMessage={updateStatusMessage}
-			onDownload={onStartDownload}
-			onApply={() => void getRpc().request.applyUpdate({})}
-			onDismiss={onDismissUpdate}
-		/>
+		<div className="app-update-section">
+			<UpdateBanner
+				key={bannerKey}
+				version={info.version}
+				ready={info.updateReady}
+				downloading={updateDownloading}
+				statusMessage={updateStatusMessage}
+				onDownload={onStartDownload}
+				onApply={() => void getRpc().request.applyUpdate({})}
+				onDismiss={onDismissUpdate}
+			/>
+		</div>
 	);
 }
 

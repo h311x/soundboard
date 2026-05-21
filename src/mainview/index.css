@@ -826,13 +826,18 @@ body {
 	letter-spacing: 0.06em;
 }
 
+.app-update-section {
+	flex-shrink: 0;
+	padding: 12px 0 14px;
+}
+
 .update-banner {
 	position: relative;
 	display: grid;
 	grid-template-columns: auto 1fr auto auto;
 	align-items: center;
 	gap: 14px 16px;
-	margin: 0 16px 10px;
+	margin: 0 16px;
 	padding: 14px 16px 14px 14px;
 	border-radius: var(--radius-lg);
 	background: linear-gradient(

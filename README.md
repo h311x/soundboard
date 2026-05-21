@@ -34,14 +34,11 @@ App icons are committed under `assets/icon/` and `icon.iconset/` (see `assets/ic
 
 `electrobun.config.ts` sets `build.win.icon` to `assets/icon/icon.ico`. Electrobun is supposed to embed that into `launcher.exe`, `bun.exe`, and the setup installer via `rcedit`.
 
-On **Windows GitHub Actions**, that step silently fails ([electrobun#429](https://github.com/blackboardsh/electrobun/issues/429)): the downloaded Electrobun CLI looks for `rcedit` in its own temp bundle (`B:\~BUN\root\electrobun\...`), not in this repo’s `node_modules`. Adding `rcedit` as a project dependency alone does not help — Electrobun never resolves it from here.
+On **Windows GitHub Actions**, that step silently fails ([electrobun#429](https://github.com/blackboardsh/electrobun/issues/429)): the downloaded Electrobun CLI looks for `rcedit` in its own temp bundle, not in this repo’s `node_modules`.
 
-**Symptoms in shipped builds without the patch:**
+**Workaround:** `scripts/patch-win-metadata.ts`, wired as Electrobun `postBuild` / `postPackage` hooks. It runs from the project with our `rcedit`, patches `launcher.exe` and `bun.exe` **before** the release tarball is created, then patches the setup `.exe` inside the release zip.
 
-- Taskbar shows the **Bun mascot** (`bun.exe` keeps Bun’s embedded icon)
-- Desktop / Explorer shortcuts show a **generic `.exe` icon** (`launcher.exe` has no icon resources)
-
-**Workaround in this repo:** `scripts/patch-win-metadata.ts`, wired as Electrobun `postBuild` / `postPackage` hooks. It runs from the project with our `rcedit`, patches `launcher.exe` and `bun.exe` **before** the release tarball is created, then patches the setup `.exe` inside the release zip.
+Windows caches icons aggressively (taskbar, Start menu, Explorer). If the `.exe` icon looks correct in File Explorer but the taskbar is stale, restart **Windows Explorer** (Task Manager → Windows Explorer → Restart) or unpin and re-pin the app.
 
 **Upstream fix:** [electrobun#433](https://github.com/blackboardsh/electrobun/pull/433) (resolve `rcedit` from `projectRoot` — not merged as of 1.18.1). When that lands in a release we use, this script can be removed.
 
