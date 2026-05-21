@@ -1,10 +1,11 @@
 import type { Clip } from "@shared/types";
 import type { SliderCommit } from "../hooks/useSliderCommit";
+import { cn } from "../utils/cn";
+import { ClipSlider } from "./ui/ClipSlider";
 
 const cancelDragPointer = (e: React.PointerEvent) => {
 	e.stopPropagation();
 };
-
 
 export function ClipPadFooter({
 	clip,
@@ -20,11 +21,10 @@ export function ClipPadFooter({
 	onEdit: () => void;
 }) {
 	return (
-		<div className="clip-footer">
-			<label className="clip-volume">
+		<div className="relative z-[1] flex cursor-default items-center gap-2.5 px-3 pb-3.5 pt-2.5">
+			<label className="min-w-0 flex-1">
 				<span className="sr-only">Volume</span>
-				<input
-					type="range"
+				<ClipSlider
 					min={0}
 					max={1}
 					step={0.01}
@@ -34,7 +34,6 @@ export function ClipPadFooter({
 					onPointerUp={volume.commit}
 					onPointerCancel={volume.commit}
 					onKeyUp={volume.commit}
-					className="clip-slider"
 					onPointerDown={(e) => {
 						volume.onPointerDown(e);
 						cancelDragPointer(e);
@@ -43,10 +42,12 @@ export function ClipPadFooter({
 				/>
 			</label>
 
-			<div className="clip-actions">
+			<div className="flex shrink-0 gap-0.5 rounded-[10px] border border-white/[0.08] bg-black/[0.32] p-[3px] backdrop-blur-[10px]">
 				<button
 					type="button"
-					className="clip-action-btn clip-action-btn--stop"
+					className={cn(
+						"inline-flex size-[30px] cursor-pointer items-center justify-center rounded-[7px] border-none bg-transparent p-0 text-[hsl(var(--accent-hsl)/0.9)] transition-[color,background] duration-150 hover:bg-[hsl(var(--accent-hsl)/0.25)] hover:text-white disabled:cursor-default disabled:opacity-30",
+					)}
 					onPointerDown={cancelDragPointer}
 					onClick={onStop}
 					disabled={!isPlaying}
@@ -59,7 +60,7 @@ export function ClipPadFooter({
 				</button>
 				<button
 					type="button"
-					className="clip-action-btn"
+					className="inline-flex size-[30px] cursor-pointer items-center justify-center rounded-[7px] border-none bg-transparent p-0 text-[var(--text-muted)] transition-[color,background] duration-150 hover:bg-white/[0.08] hover:text-[var(--text-primary)]"
 					onPointerDown={cancelDragPointer}
 					onClick={onEdit}
 					title="Edit"

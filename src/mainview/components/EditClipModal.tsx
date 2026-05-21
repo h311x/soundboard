@@ -1,5 +1,16 @@
 import type { Clip } from "@shared/types";
 import { useState } from "react";
+import { Button } from "./ui/Button";
+import { GlassInput } from "./ui/GlassInput";
+import {
+	ModalActions,
+	ModalBody,
+	ModalDivider,
+	ModalLabel,
+	ModalOverlay,
+	ModalSheet,
+	ModalTitle,
+} from "./ui/Modal";
 
 export type EditClipModalProps = {
 	clip: Clip;
@@ -14,46 +25,33 @@ export function EditClipModal({ clip, onSave, onDelete, onClose }: EditClipModal
 
 	if (confirmDelete) {
 		return (
-			<div className="modal-overlay" onClick={onClose}>
-				<div
-					className="glass-panel modal-sheet"
-					onClick={(e) => e.stopPropagation()}
-				>
-					<h2 className="modal-title">Delete sound?</h2>
-					<p className="modal-body">
+			<ModalOverlay onClose={onClose}>
+				<ModalSheet onClick={(e) => e.stopPropagation()}>
+					<ModalTitle>Delete sound?</ModalTitle>
+					<ModalBody>
 						Remove <strong>{clip.displayName}</strong> from your board. This
 						cannot be undone.
-					</p>
-					<div className="modal-actions">
-						<button
-							type="button"
-							className="btn-ghost"
-							onClick={() => setConfirmDelete(false)}
-						>
+					</ModalBody>
+					<ModalActions>
+						<Button variant="ghost" onClick={() => setConfirmDelete(false)}>
 							Back
-						</button>
-						<button type="button" className="btn-danger" onClick={onDelete}>
+						</Button>
+						<Button variant="danger" onClick={onDelete}>
 							Delete
-						</button>
-					</div>
-				</div>
-			</div>
+						</Button>
+					</ModalActions>
+				</ModalSheet>
+			</ModalOverlay>
 		);
 	}
 
 	return (
-		<div className="modal-overlay" onClick={onClose}>
-			<div
-				className="glass-panel modal-sheet"
-				onClick={(e) => e.stopPropagation()}
-			>
-				<h2 className="modal-title">Edit sound</h2>
-				<label className="modal-label" htmlFor="clip-edit-name">
-					Name
-				</label>
-				<input
+		<ModalOverlay onClose={onClose}>
+			<ModalSheet onClick={(e) => e.stopPropagation()}>
+				<ModalTitle>Edit sound</ModalTitle>
+				<ModalLabel htmlFor="clip-edit-name">Name</ModalLabel>
+				<GlassInput
 					id="clip-edit-name"
-					className="glass-input"
 					value={value}
 					onChange={(e) => setValue(e.target.value)}
 					onKeyDown={(e) => {
@@ -62,33 +60,26 @@ export function EditClipModal({ clip, onSave, onDelete, onClose }: EditClipModal
 					}}
 					autoFocus
 				/>
-				<div className="modal-actions">
-					<button type="button" className="btn-ghost" onClick={onClose}>
+				<ModalActions>
+					<Button variant="ghost" onClick={onClose}>
 						Cancel
-					</button>
-					<button
-						type="button"
-						className="btn-primary"
-						onClick={() => onSave(value.trim())}
-						disabled={!value.trim()}
-					>
+					</Button>
+					<Button onClick={() => onSave(value.trim())} disabled={!value.trim()}>
 						Save
-					</button>
-				</div>
+					</Button>
+				</ModalActions>
 
-				<div className="modal-divider" />
+				<ModalDivider />
 
-				<p className="modal-body modal-body--compact">
-					Remove this sound from your board.
-				</p>
-				<button
-					type="button"
-					className="btn-danger btn-danger--full"
+				<ModalBody compact>Remove this sound from your board.</ModalBody>
+				<Button
+					variant="danger"
+					className="w-full"
 					onClick={() => setConfirmDelete(true)}
 				>
 					Delete sound…
-				</button>
-			</div>
-		</div>
+				</Button>
+			</ModalSheet>
+		</ModalOverlay>
 	);
 }

@@ -5,6 +5,9 @@ import {
 	useHotkeyRecording,
 } from "../hooks/useHotkeyRecording";
 import { formatHotkeyPart } from "../utils/hotkey";
+import { cn } from "../utils/cn";
+import { Button } from "./ui/Button";
+import { ModalBody, ModalHint, ModalOverlay, ModalSheet, ModalTitle } from "./ui/Modal";
 
 export type HotkeyModalProps = {
 	clip: Clip;
@@ -47,14 +50,11 @@ export function HotkeyModal({ clip, onSave, onClose }: HotkeyModalProps) {
 
 function HotkeyModalSheet(props: HotkeyModalSheetProps) {
 	return (
-		<div className="modal-overlay" onClick={props.onClose}>
-			<div
-				className="glass-panel modal-sheet hotkey-modal"
-				onClick={(e) => e.stopPropagation()}
-			>
+		<ModalOverlay onClose={props.onClose}>
+			<ModalSheet onClick={(e) => e.stopPropagation()}>
 				<HotkeyModalBody {...props} />
-			</div>
-		</div>
+			</ModalSheet>
+		</ModalOverlay>
 	);
 }
 
@@ -77,12 +77,12 @@ function HotkeyModalBody(props: HotkeyModalSheetProps) {
 
 	return (
 		<>
-			<h2 className="modal-title">Shortcut for {props.clip.displayName}</h2>
-			<p className="modal-body hotkey-modal-desc">
+			<ModalTitle>Shortcut for {props.clip.displayName}</ModalTitle>
+			<ModalBody className="mb-3">
 				Plays this sound globally, even when the app is in the background.
-			</p>
+			</ModalBody>
 			<HotkeyPreview recording={props.recording} parts={preview} />
-			<p className="modal-hint">{hotkeyModalHint(props.recording, isDirty)}</p>
+			<ModalHint>{hotkeyModalHint(props.recording, isDirty)}</ModalHint>
 			<HotkeyModalControls
 				clip={props.clip}
 				draft={props.draft}
@@ -108,13 +108,16 @@ function HotkeyPreview({
 	recording: boolean;
 	parts: string[];
 }) {
-	const className = recording
-		? "hotkey-preview hotkey-preview--recording"
-		: "hotkey-preview";
 	const placeholder = recording ? "Press key combination…" : "No shortcut";
 	return (
-		<div className={className}>
-			<HotkeyKeyDisplay parts={parts} placeholder={placeholder} />
+		<div
+			className={cn(
+				"mb-3 flex min-h-[4.5rem] items-center justify-center rounded-[var(--radius-sm)] border border-[var(--glass-border)] bg-black/25 px-4 py-5",
+				recording &&
+					"border-[var(--accent-focus)] shadow-[0_0_0_1px_hsl(var(--accent-hsl)/0.2)]",
+			)}
+		>
+			<HotkeyKeyDisplay parts={parts} placeholder={placeholder} recording={recording} />
 		</div>
 	);
 }
@@ -122,17 +125,30 @@ function HotkeyPreview({
 function HotkeyKeyDisplay({
 	parts,
 	placeholder,
+	recording,
 }: {
 	parts: string[];
 	placeholder: string;
+	recording: boolean;
 }) {
 	if (parts.length === 0) {
-		return <span className="hotkey-preview-placeholder">{placeholder}</span>;
+		return (
+			<span className="text-center text-[0.95rem] text-[var(--text-muted)]">
+				{placeholder}
+			</span>
+		);
 	}
 	return (
-		<div className="hotkey-keys">
+		<div className="flex flex-wrap items-center justify-center gap-2.5">
 			{parts.map((part, i) => (
-				<kbd key={`${part}-${i}`} className="hotkey-key">
+				<kbd
+					key={`${part}-${i}`}
+					className={cn(
+						"inline-flex min-h-10 min-w-10 items-center justify-center rounded-[10px] border border-white/[0.14] bg-white/[0.08] px-3 font-mono text-[1.15rem] leading-none text-[var(--text-primary)] shadow-[0_2px_8px_rgba(0,0,0,0.2)]",
+						recording &&
+							"border-[hsl(var(--accent-hsl)/0.45)] bg-[hsl(var(--accent-hsl)/0.12)] text-[hsl(var(--accent-hsl)/0.95)]",
+					)}
+				>
 					{formatHotkeyPart(part)}
 				</kbd>
 			))}
@@ -164,7 +180,7 @@ function HotkeyModalControls(props: {
 	onSave: () => void;
 }) {
 	return (
-		<div className="hotkey-modal-controls">
+		<div className="mt-1 flex flex-col gap-2.5">
 			<HotkeyRecordButton {...props} />
 			<HotkeyActionButtons {...props} />
 			<HotkeyRemoveButton {...props} />
@@ -184,14 +200,14 @@ function HotkeyRecordButton({
 	onStartRecording: () => void;
 }) {
 	return (
-		<button
-			type="button"
-			className="btn-secondary"
+		<Button
+			variant="secondary"
+			className="w-full"
 			onClick={onStartRecording}
 			disabled={recording || saving}
 		>
 			{hotkeyRecordLabel(recording, draft)}
-		</button>
+		</Button>
 	);
 }
 
@@ -207,18 +223,13 @@ function HotkeyActionButtons({
 	onSave: () => void;
 }) {
 	return (
-		<div className="hotkey-modal-actions">
-			<button type="button" className="btn-ghost" onClick={onClose} disabled={saving}>
+		<div className="grid grid-cols-2 gap-2.5">
+			<Button variant="ghost" className="w-full justify-center" onClick={onClose} disabled={saving}>
 				Cancel
-			</button>
-			<button
-				type="button"
-				className="btn-primary"
-				onClick={onSave}
-				disabled={!canSave}
-			>
+			</Button>
+			<Button className="w-full justify-center" onClick={onSave} disabled={!canSave}>
 				{saving ? "Saving…" : "Save"}
-			</button>
+			</Button>
 		</div>
 	);
 }
@@ -240,7 +251,7 @@ function HotkeyRemoveButton({
 	return (
 		<button
 			type="button"
-			className="hotkey-modal-remove"
+			className="mt-0.5 w-full cursor-pointer rounded-[var(--radius-sm)] border-none bg-transparent px-3 py-2 font-inherit text-[0.82rem] text-[#e88] transition-[color,background] duration-150 hover:bg-[rgba(200,80,80,0.12)] hover:text-[#faa] disabled:cursor-not-allowed disabled:opacity-[0.38]"
 			onClick={() => onDraftChange("")}
 			disabled={recording || saving}
 		>

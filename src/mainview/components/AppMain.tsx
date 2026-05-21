@@ -5,12 +5,14 @@ import type { AppCoreProps } from "../app/appCoreProps";
 import { audioEngine } from "../audio/engine";
 import { allowFileDrop, importDroppedFiles } from "../app/fileDrop";
 import { getRpc } from "../rpc";
+import { cn } from "../utils/cn";
 import { AppClipGrid } from "./AppClipGrid";
 import { AppModals } from "./AppModals";
 import { EmptyState } from "./EmptyState";
 import { Toast } from "./Toast";
 import { Toolbar } from "./Toolbar";
 import { UpdateBanner } from "./UpdateBanner";
+import { GlassPanel } from "./ui/GlassPanel";
 
 export type AppToastState = { message: string; variant?: "info" | "error" } | null;
 
@@ -36,12 +38,15 @@ export type AppMainProps = AppCoreProps & {
 export function AppMain(props: AppMainProps) {
 	return (
 		<div
-			className="app-shell"
+			className="select-none-root fixed inset-0 z-[1] flex min-h-0 min-w-0 flex-col overflow-hidden [&>.titlebar]:shrink-0 [&>header]:shrink-0"
 			onDragEnterCapture={allowFileDrop}
 			onDragOverCapture={allowFileDrop}
 			onDrop={(e) => onAppDrop(e, props.applyState, props.showToast)}
 		>
-			<div className="bg-mesh" aria-hidden />
+			<div
+				className="pointer-events-none fixed inset-0 z-0 bg-[var(--bg-base)] bg-[radial-gradient(ellipse_80%_60%_at_20%_0%,hsl(var(--mesh-hsl)/0.9)_0%,transparent_60%),radial-gradient(ellipse_60%_50%_at_90%_100%,hsl(var(--mesh-hsl)/0.7)_0%,transparent_55%)]"
+				aria-hidden
+			/>
 			<AppToolbarSection {...props} />
 			<AppUpdateSection {...props} />
 			<AppAudioHint state={props.state} audioBlocked={props.audioBlocked} />
@@ -74,9 +79,13 @@ function onAppDrop(
 
 function AppMainContent(props: AppMainProps) {
 	const empty = props.state.board.clips.length === 0;
-	const mainClass = empty ? "main-content main-content--empty" : "main-content";
 	return (
-		<main className={mainClass}>
+		<main
+			className={cn(
+				"relative z-[1] min-h-0 flex-1 overflow-auto px-4 py-3",
+				empty && "flex items-center justify-center before:pointer-events-none before:absolute before:inset-x-5 before:top-4 before:bottom-5 before:z-0 before:rounded-[var(--radius-lg)] before:border before:border-dashed before:border-[hsl(var(--accent-hsl)/0.18)] before:content-['']",
+			)}
+		>
 			{empty ? (
 				<EmptyState onImport={() => void importViaDialog(props.applyState)} />
 			) : (
@@ -149,7 +158,7 @@ function AppUpdateSection({
 	const bannerKey = updateBannerKey(info);
 	if (!info || !bannerKey) return null;
 	return (
-		<div className="app-update-section">
+		<div className="shrink-0 px-0 py-3 pb-3.5">
 			<UpdateBanner
 				key={bannerKey}
 				version={info.version}
@@ -173,9 +182,9 @@ function AppAudioHint({
 }) {
 	if (!audioBlocked || state.capabilities.hostAudio) return null;
 	return (
-		<div className="audio-hint glass-panel">
+		<GlassPanel className="mx-5 shrink-0 px-3.5 py-2.5 text-center text-[0.85rem] text-[var(--text-muted)] rounded-[var(--radius-sm)]">
 			Click anywhere to enable audio playback
-		</div>
+		</GlassPanel>
 	);
 }
 

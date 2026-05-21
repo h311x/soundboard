@@ -100,7 +100,7 @@ export function AppClipGrid({
 			onDragEnd={handleDragEnd}
 		>
 			<SortableContext items={clipIds} strategy={rectSortingStrategy}>
-				<div className="clip-grid">
+				<div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3.5">
 					{orderedClips.map((clip) => (
 						<ClipPad
 							key={clip.id}

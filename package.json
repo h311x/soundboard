@@ -1,6 +1,6 @@
 {
 	"name": "soundboard",
-	"version": "0.1.14",
+	"version": "0.1.15",
 	"description": "Cross-platform desktop soundboard built with Electrobun",
 	"scripts": {
 		"dev": "concurrently \"vite --port 5173\" \"vite build && electrobun dev\"",
